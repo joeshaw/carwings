@@ -12,12 +12,12 @@ start charging.
 
 The `carwings` library current implements a subset of these options.
 
-[x] Establish an authenticated connection to Carwings
-[x] Ask Carwings to update vehicle data, and monitor the update
-[x] Get the current battery status
-[ ] Get the current climate control status
-[ ] Remotely start and stop climate control
-[ ] Remotely start charging
+- [x] Establish an authenticated connection to Carwings
+- [x] Ask Carwings to update vehicle data, and monitor the update
+- [x] Get the current battery status
+- [ ] Get the current climate control status
+- [ ] Remotely start and stop climate control
+- [ ] Remotely start charging
 
 ## Command-line tool
 
@@ -51,8 +51,8 @@ This will print something like:
 
 ### TODO
 
-[ ] Don't require password on the CLI
-[ ] Save authentication token somewhere, so we don't re-login on every run.
+- [ ] Don't require password on the CLI
+- [ ] Save authentication token somewhere, so we don't re-login on every run.
 
 ## Carwings protocol
 
