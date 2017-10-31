@@ -169,6 +169,18 @@ type TimeToFull struct {
 	Level2At6kW time.Duration
 }
 
+// VehicleLocation indicates the vehicle's current location.
+type VehicleLocation struct {
+	// Timestamp of the last time vehicle location was updated.
+	Timestamp time.Time
+
+	// Latitude of the vehicle
+	Latitude string
+
+	// Longitude of the vehicle
+	Longitude string
+}
+
 // PluginState indicates whether and how the vehicle is plugged in.
 // It is separate from ChargingStatus, because the vehicle can be
 // plugged in but not actively charging.
@@ -629,4 +641,28 @@ func (s *Session) ChargingRequest() error {
 	}
 
 	return nil
+}
+
+func (s *Session) LocateVehicle() (VehicleLocation, error) {
+	if s.customSessionID == "" {
+		return VehicleLocation{}, ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		ReceivedDate cwTime `json:"receivedDate"`
+		TargetDate   cwTime
+		Lat          string
+		Lng          string
+	}
+
+	if err := apiRequest("MyCarFinderLatLng.php", s.commonParams(), &resp); err != nil {
+		return VehicleLocation{}, err
+	}
+
+	return VehicleLocation{
+		Timestamp: time.Time(resp.ReceivedDate).In(s.loc),
+		Latitude:  resp.Lat,
+		Longitude: resp.Lng,
+	}, nil
 }

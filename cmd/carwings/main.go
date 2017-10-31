@@ -33,6 +33,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
 	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
+	fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 	fmt.Fprintf(os.Stderr, "\n")
 }
 
@@ -82,6 +83,9 @@ func main() {
 
 	case "climate-on":
 		run = runClimateOn
+
+	case "locate":
+		run = runLocate
 
 	default:
 		usage()
@@ -274,5 +278,29 @@ func runClimateOn(cfg config, args []string) error {
 	}
 
 	fmt.Println("Climate control turned on")
+	return nil
+}
+
+func runLocate(cfg config, args []string) error {
+	fmt.Println("Logging into Carwings...")
+
+	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Getting latest vehicle position...")
+
+	vl, err := s.LocateVehicle()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Vehicle location as of %s:\n", vl.Timestamp)
+	fmt.Printf("  Latitude: %s\n", vl.Latitude)
+	fmt.Printf("  Longitude: %s\n", vl.Longitude)
+	fmt.Printf("  Link: https://www.google.com/maps/place/%s,%s\n", vl.Latitude, vl.Longitude)
+	fmt.Println()
+
 	return nil
 }
