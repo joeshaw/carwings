@@ -29,7 +29,10 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "COMMANDS\n")
 	fmt.Fprintf(os.Stderr, "  update            Load latest data from vehicle\n")
 	fmt.Fprintf(os.Stderr, "  battery           Get most recently loaded battery status\n")
+	fmt.Fprintf(os.Stderr, "  charge            Begin charging plugged-in vehicle\n")
 	fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
+	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
+	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 	fmt.Fprintf(os.Stderr, "\n")
 }
 
@@ -68,8 +71,17 @@ func main() {
 	case "battery":
 		run = runBattery
 
+	case "charge":
+		run = runCharge
+
 	case "climate":
 		run = runClimateStatus
+
+	case "climate-off":
+		run = runClimateOff
+
+	case "climate-on":
+		run = runClimateOn
 
 	default:
 		usage()
@@ -146,6 +158,26 @@ func runBattery(cfg config, args []string) error {
 	return nil
 }
 
+func runCharge(cfg config, args []string) error {
+	fmt.Println("Logging into Carwings...")
+
+	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Sending charging request...")
+
+	err = s.ChargingRequest()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Charging request sent")
+
+	return nil
+}
+
 func runClimateStatus(cfg config, args []string) error {
 	fmt.Println("Logging into Carwings...")
 
@@ -156,10 +188,91 @@ func runClimateStatus(cfg config, args []string) error {
 
 	fmt.Println("Getting latest retrieved climate control status...")
 
-	err = s.ClimateControlStatus()
+	cs, err := s.ClimateControlStatus()
 	if err != nil {
 		return err
 	}
 
+	running := "no"
+	if cs.Running {
+		running = "yes"
+	}
+
+	fmt.Printf("Climate control status:\n")
+	fmt.Printf("  Running: %s\n", running)
+	fmt.Printf("  Plug-in state: %s\n", cs.PluginState)
+	fmt.Printf("  Temperature setting: %d %s\n", cs.Temperature, cs.TemperatureUnit)
+	fmt.Println()
+
+	return nil
+}
+
+func runClimateOff(cfg config, args []string) error {
+	fmt.Println("Logging into Carwings...")
+
+	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Sending climate control off request...")
+
+	key, err := s.ClimateOffRequest()
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	for {
+		fmt.Println("Checking if climate control update finished...")
+		done, err := s.CheckClimateOffRequest(key)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		if time.Since(start) > 2*time.Minute {
+			return errors.New("timed out waiting for update")
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	fmt.Println("Climate control turned off")
+	return nil
+}
+
+func runClimateOn(cfg config, args []string) error {
+	fmt.Println("Logging into Carwings...")
+
+	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Sending climate control off request...")
+
+	key, err := s.ClimateOnRequest()
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	for {
+		fmt.Println("Checking if climate control update finished...")
+		done, err := s.CheckClimateOnRequest(key)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		if time.Since(start) > 2*time.Minute {
+			return errors.New("timed out waiting for update")
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	fmt.Println("Climate control turned on")
 	return nil
 }

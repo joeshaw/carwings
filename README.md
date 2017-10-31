@@ -15,9 +15,10 @@ The `carwings` library current implements a subset of these options.
 - [x] Establish an authenticated connection to Carwings
 - [x] Ask Carwings to update vehicle data, and monitor the update
 - [x] Get the current battery status
-- [ ] Get the current climate control status
-- [ ] Remotely start and stop climate control
-- [ ] Remotely start charging
+- [x] Get the current climate control status
+- [x] Remotely start and stop climate control
+- [x] Remotely start charging
+- [ ] Vehicle location
 
 ## Command-line tool
 

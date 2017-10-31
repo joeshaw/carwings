@@ -88,7 +88,32 @@ type Session struct {
 	region          string
 	vin             string
 	customSessionID string
+	tz              string
 	loc             *time.Location
+}
+
+// ClimateStatus contains information about the vehicle's climate
+// control (AC or heater) status.
+type ClimateStatus struct {
+	// The current climate control operation status.
+	Running bool
+
+	// Current plugged-in state
+	PluginState PluginState
+
+	// The amount of time the climate control system will run
+	// while on battery power, in seconds.
+	BatteryDuration int
+
+	// The amount of time the climate control system will run
+	// while plugged in, in seconds.
+	PluggedDuration int
+
+	// The climate preset temperature unit, F or C
+	TemperatureUnit string
+
+	// The climate preset temperature value
+	Temperature int
 }
 
 // BatteryStatus contains information about the vehicle's state of
@@ -325,6 +350,7 @@ func Connect(username, password, region string) (*Session, error) {
 		region:          region,
 		vin:             vi.VIN,
 		customSessionID: vi.CustomSessionID,
+		tz:              loginResp.CustomerInfo.Timezone,
 		loc:             loc,
 	}, nil
 }
@@ -334,6 +360,7 @@ func (s *Session) commonParams() url.Values {
 	params.Set("RegionCode", s.region)
 	params.Set("VIN", s.vin)
 	params.Set("custom_sessionid", s.customSessionID)
+	params.Set("tz", s.tz)
 	return params
 }
 
@@ -449,10 +476,143 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 }
 
 // ClimateControlStatus returns the most recent climate control status
-// from the Carwings service.  Note that this data is not real-time:
-// it is cached from the last time the vehicle data was updated.  Use
-// UpdateStatus method to update vehicle data.
-func (s *Session) ClimateControlStatus() error {
+// from the Carwings service.
+func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
+	if s.customSessionID == "" {
+		return ClimateStatus{}, ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		RemoteACRecords struct {
+			OperationResult        string
+			OperationDateAndTime   cwTime
+			RemoteACOperation      string
+			ACStartStopDateAndTime cwTime
+			ACStartStopURL         string
+			PluginState            string
+			ACDurationBatterySec   int `json:",string"`
+			ACDurationPluggedSec   int `json:",string"`
+			PreAC_unit             string
+			PreAC_temp             int `json:",string"`
+		}
+	}
+
+	if err := apiRequest("RemoteACRecordsRequest.php", s.commonParams(), &resp); err != nil {
+		return ClimateStatus{}, err
+	}
+
+	racr := resp.RemoteACRecords
+
+	cs := ClimateStatus{
+		Running:         racr.RemoteACOperation == "START",
+		PluginState:     PluginState(racr.PluginState),
+		BatteryDuration: racr.ACDurationBatterySec,
+		PluggedDuration: racr.ACDurationPluggedSec,
+		TemperatureUnit: racr.PreAC_unit,
+		Temperature:     racr.PreAC_temp,
+	}
+
+	return cs, nil
+}
+
+// ClimateOffRequest sends a request to turn off the climate control
+// system.  This is an asynchronous operation: it returns a "result
+// key" that can be used to poll for status with the
+// CheckClimateOffRequest method.
+func (s *Session) ClimateOffRequest() (string, error) {
+	if s.customSessionID == "" {
+		return "", ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		ResultKey string `json:"resultKey"`
+	}
+
+	if err := apiRequest("ACRemoteOffRequest.php", s.commonParams(), &resp); err != nil {
+		return "", err
+	}
+
+	return resp.ResultKey, nil
+
+}
+
+// CheckClimateOffRequest returns whether the ClimateOffRequest has
+// finished.
+func (s *Session) CheckClimateOffRequest(resultKey string) (bool, error) {
+	if s.customSessionID == "" {
+		return false, ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		ResponseFlag    int    `json:"responseFlag,string"` // 0 or 1
+		OperationResult string `json:"operationResult"`
+		TimeStamp       cwTime `json:"timeStamp"`
+		HVACStatus      string `json:"hvacStatus"`
+	}
+
+	params := s.commonParams()
+	params.Set("resultKey", resultKey)
+
+	if err := apiRequest("ACRemoteOffResult.php", params, &resp); err != nil {
+		return false, err
+	}
+
+	return resp.ResponseFlag == 1, nil
+}
+
+// ClimateOnRequest sends a request to turn on the climate control
+// system.  This is an asynchronous operation: it returns a "result
+// key" that can be used to poll for status with the
+// CheckClimateOnRequest method.
+func (s *Session) ClimateOnRequest() (string, error) {
+	if s.customSessionID == "" {
+		return "", ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		ResultKey string `json:"resultKey"`
+	}
+
+	if err := apiRequest("ACRemoteRequest.php", s.commonParams(), &resp); err != nil {
+		return "", err
+	}
+
+	return resp.ResultKey, nil
+
+}
+
+// CheckClimateOnRequest returns whether the ClimateOnRequest has
+// finished.
+func (s *Session) CheckClimateOnRequest(resultKey string) (bool, error) {
+	if s.customSessionID == "" {
+		return false, ErrNotLoggedIn
+	}
+
+	var resp struct {
+		baseResponse
+		ResponseFlag    int    `json:"responseFlag,string"` // 0 or 1
+		OperationResult string `json:"operationResult"`
+		ACContinueTime  string `json:"acContinueTime"`
+		TimeStamp       cwTime `json:"timeStamp"`
+		HVACStatus      string `json:"hvacStatus"`
+	}
+
+	params := s.commonParams()
+	params.Set("resultKey", resultKey)
+
+	if err := apiRequest("ACRemoteResult.php", params, &resp); err != nil {
+		return false, err
+	}
+
+	return resp.ResponseFlag == 1, nil
+}
+
+// ChargingRequest begins charging a plugged-in vehicle.
+func (s *Session) ChargingRequest() error {
 	if s.customSessionID == "" {
 		return ErrNotLoggedIn
 	}
@@ -461,14 +621,12 @@ func (s *Session) ClimateControlStatus() error {
 		baseResponse
 	}
 
-	oldDebug := Debug
-	Debug = true
+	params := s.commonParams()
+	params.Set("ExecuteTime", time.Now().In(s.loc).Format("2006-01-02"))
 
-	if err := apiRequest("RemoteACRecordsRequest.php", s.commonParams(), &resp); err != nil {
+	if err := apiRequest("BatteryRemoteChargingRequest.php", params, &resp); err != nil {
 		return err
 	}
-
-	Debug = oldDebug
 
 	return nil
 }
