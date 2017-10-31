@@ -7,18 +7,8 @@ the Nissan Leaf Carwings API.
 
 Through the Carwings API you can ask your vehicle for the latest data,
 see current battery and charging statuses, see the current climate
-control state, start or stop climate control remotely, and remotely
-start charging.
-
-The `carwings` library current implements a subset of these options.
-
-- [x] Establish an authenticated connection to Carwings
-- [x] Ask Carwings to update vehicle data, and monitor the update
-- [x] Get the current battery status
-- [x] Get the current climate control status
-- [x] Remotely start and stop climate control
-- [x] Remotely start charging
-- [ ] Vehicle location
+control state, start or stop climate control remotely, remotely
+start charging, and retrieve the last known location of the vehicle.
 
 ## Command-line tool
 

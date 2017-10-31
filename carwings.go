@@ -643,6 +643,10 @@ func (s *Session) ChargingRequest() error {
 	return nil
 }
 
+// LocateVehicle requests the last-known location of the vehicle from
+// the Carwings service.  This data is not real-time.  A timestamp of
+// the most recent update is available in the returned VehicleLocation
+// value.
 func (s *Session) LocateVehicle() (VehicleLocation, error) {
 	if s.customSessionID == "" {
 		return VehicleLocation{}, ErrNotLoggedIn
