@@ -86,7 +86,7 @@ const (
 // Session defines a one or more connections to the Carwings service
 type Session struct {
 	region          string
-	vin             string
+	VIN             string
 	customSessionID string
 	tz              string
 	loc             *time.Location
@@ -364,7 +364,7 @@ func Connect(username, password, region string) (*Session, error) {
 
 	return &Session{
 		region:          region,
-		vin:             vi.VIN,
+		VIN:             vi.VIN,
 		customSessionID: vi.CustomSessionID,
 		tz:              loginResp.CustomerInfo.Timezone,
 		loc:             loc,
@@ -374,7 +374,7 @@ func Connect(username, password, region string) (*Session, error) {
 func (s *Session) commonParams() url.Values {
 	params := url.Values{}
 	params.Set("RegionCode", s.region)
-	params.Set("VIN", s.vin)
+	params.Set("VIN", s.VIN)
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
 	return params
