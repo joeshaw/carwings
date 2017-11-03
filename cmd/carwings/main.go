@@ -62,7 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var run func(config, []string) error
+	var run func(*carwings.Session, []string) error
 
 	cmd, args := strings.ToLower(args[0]), args[1:]
 	switch cmd {
@@ -92,20 +92,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(cfg, args); err != nil {
+	fmt.Println("Logging into Carwings...")
+
+	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := run(s, args); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func runUpdate(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runUpdate(s *carwings.Session, args []string) error {
 	fmt.Println("Requesting update from Carwings...")
 
 	key, err := s.UpdateStatus()
@@ -133,14 +134,7 @@ func runUpdate(cfg config, args []string) error {
 	return nil
 }
 
-func runBattery(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runBattery(s *carwings.Session, args []string) error {
 	fmt.Println("Getting latest retrieved battery status...")
 
 	bs, err := s.BatteryStatus()
@@ -162,17 +156,10 @@ func runBattery(cfg config, args []string) error {
 	return nil
 }
 
-func runCharge(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runCharge(s *carwings.Session, args []string) error {
 	fmt.Println("Sending charging request...")
 
-	err = s.ChargingRequest()
+	err := s.ChargingRequest()
 	if err != nil {
 		return err
 	}
@@ -182,14 +169,7 @@ func runCharge(cfg config, args []string) error {
 	return nil
 }
 
-func runClimateStatus(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runClimateStatus(s *carwings.Session, args []string) error {
 	fmt.Println("Getting latest retrieved climate control status...")
 
 	cs, err := s.ClimateControlStatus()
@@ -211,14 +191,7 @@ func runClimateStatus(cfg config, args []string) error {
 	return nil
 }
 
-func runClimateOff(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runClimateOff(s *carwings.Session, args []string) error {
 	fmt.Println("Sending climate control off request...")
 
 	key, err := s.ClimateOffRequest()
@@ -246,14 +219,7 @@ func runClimateOff(cfg config, args []string) error {
 	return nil
 }
 
-func runClimateOn(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runClimateOn(s *carwings.Session, args []string) error {
 	fmt.Println("Sending climate control off request...")
 
 	key, err := s.ClimateOnRequest()
@@ -281,14 +247,7 @@ func runClimateOn(cfg config, args []string) error {
 	return nil
 }
 
-func runLocate(cfg config, args []string) error {
-	fmt.Println("Logging into Carwings...")
-
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
-	if err != nil {
-		return err
-	}
-
+func runLocate(s *carwings.Session, args []string) error {
 	fmt.Println("Getting latest vehicle position...")
 
 	vl, err := s.LocateVehicle()

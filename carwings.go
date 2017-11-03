@@ -85,6 +85,8 @@ const (
 
 // Session defines a one or more connections to the Carwings service
 type Session struct {
+	username        string
+	encpw           string
 	region          string
 	VIN             string
 	customSessionID string
@@ -306,7 +308,14 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 		return err
 	}
 
-	if s := target.Status(); s != http.StatusOK {
+	switch s := target.Status(); s {
+	case http.StatusOK:
+		return nil
+
+	case http.StatusUnauthorized:
+		return ErrNotLoggedIn
+
+	default:
 		return fmt.Errorf("received status code %d", s)
 	}
 
@@ -333,9 +342,22 @@ func Connect(username, password, region string) (*Session, error) {
 		return nil, err
 	}
 
-	params.Set("UserId", username)
-	params.Set("Password", encpw)
-	params.Set("RegionCode", region)
+	s := &Session{
+		username: username,
+		encpw:    encpw,
+		region:   region,
+	}
+
+	return s, s.Login()
+}
+
+func (s *Session) Login() error {
+	params := url.Values{}
+	params.Set("initial_app_strings", initialAppStrings)
+
+	params.Set("UserId", s.username)
+	params.Set("Password", s.encpw)
+	params.Set("RegionCode", s.region)
 
 	// Not a comprehensive representation, just what we need
 	var loginResp struct {
@@ -353,7 +375,7 @@ func Connect(username, password, region string) (*Session, error) {
 		}
 	}
 	if err := apiRequest("UserLoginRequest.php", params, &loginResp); err != nil {
-		return nil, err
+		return err
 	}
 
 	loc, err := time.LoadLocation(loginResp.CustomerInfo.Timezone)
@@ -362,13 +384,11 @@ func Connect(username, password, region string) (*Session, error) {
 	}
 	vi := loginResp.VehicleInfoList.VehicleInfo[0]
 
-	return &Session{
-		region:          region,
-		VIN:             vi.VIN,
-		customSessionID: vi.CustomSessionID,
-		tz:              loginResp.CustomerInfo.Timezone,
-		loc:             loc,
-	}, nil
+	s.loc = loc
+	s.customSessionID = vi.CustomSessionID
+	s.VIN = vi.VIN
+
+	return nil
 }
 
 func (s *Session) commonParams() url.Values {
