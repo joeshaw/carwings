@@ -184,8 +184,12 @@ func runClimateStatus(s *carwings.Session, args []string) error {
 
 	fmt.Printf("Climate control status:\n")
 	fmt.Printf("  Running: %s\n", running)
-	fmt.Printf("  Plug-in state: %s\n", cs.PluginState)
-	fmt.Printf("  Temperature setting: %d %s\n", cs.Temperature, cs.TemperatureUnit)
+	if cs.PluginState != "" {
+		fmt.Printf("  Plug-in state: %s\n", cs.PluginState)
+	}
+	if cs.Temperature != 0 {
+		fmt.Printf("  Temperature setting: %d %s\n", cs.Temperature, cs.TemperatureUnit)
+	}
 	fmt.Println()
 
 	return nil
