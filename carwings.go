@@ -391,8 +391,28 @@ func (s *Session) Login() error {
 	return nil
 }
 
-func (s *Session) commonParams() url.Values {
-	params := url.Values{}
+func (s *Session) apiRequest(endpoint string, params url.Values, target response) error {
+	params = s.setCommonParams(params)
+
+	err := apiRequest(endpoint, params, target)
+	if err == ErrNotLoggedIn {
+		if err := s.Login(); err != nil {
+			return err
+		}
+
+		params = s.setCommonParams(params)
+		return apiRequest(endpoint, params, target)
+	}
+
+	return err
+
+}
+
+func (s *Session) setCommonParams(params url.Values) url.Values {
+	if params == nil {
+		params = url.Values{}
+	}
+
 	params.Set("RegionCode", s.region)
 	params.Set("VIN", s.VIN)
 	params.Set("custom_sessionid", s.customSessionID)
@@ -405,15 +425,11 @@ func (s *Session) commonParams() url.Values {
 // "result key" that can be used to poll for status with the
 // CheckUpdate method.
 func (s *Session) UpdateStatus() (string, error) {
-	if s.customSessionID == "" {
-		return "", ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ResultKey string `json:"resultKey"`
 	}
-	if err := apiRequest("BatteryStatusCheckRequest.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("BatteryStatusCheckRequest.php", nil, &resp); err != nil {
 		return "", err
 	}
 
@@ -423,11 +439,7 @@ func (s *Session) UpdateStatus() (string, error) {
 // CheckUpdate returns whether the update corresponding to the
 // provided result key has finished.
 func (s *Session) CheckUpdate(resultKey string) (bool, error) {
-	if s.customSessionID == "" {
-		return false, ErrNotLoggedIn
-	}
-
-	params := s.commonParams()
+	params := url.Values{}
 	params.Set("resultKey", resultKey)
 
 	var resp struct {
@@ -436,7 +448,7 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 		OperationResult string `json:"operationResult"`
 	}
 
-	if err := apiRequest("BatteryStatusCheckResultRequest.php", params, &resp); err != nil {
+	if err := s.apiRequest("BatteryStatusCheckResultRequest.php", params, &resp); err != nil {
 		return false, err
 	}
 
@@ -453,10 +465,6 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 // cached from the last time the vehicle data was updated.  Use
 // UpdateStatus method to update vehicle data.
 func (s *Session) BatteryStatus() (BatteryStatus, error) {
-	if s.customSessionID == "" {
-		return BatteryStatus{}, ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		BatteryStatusRecords struct {
@@ -487,7 +495,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 			NotificationDateAndTime cwTime
 		}
 	}
-	if err := apiRequest("BatteryStatusRecordsRequest.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("BatteryStatusRecordsRequest.php", nil, &resp); err != nil {
 		return BatteryStatus{}, err
 	}
 
@@ -514,10 +522,6 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 // ClimateControlStatus returns the most recent climate control status
 // from the Carwings service.
 func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
-	if s.customSessionID == "" {
-		return ClimateStatus{}, ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		RemoteACRecords struct {
@@ -534,7 +538,7 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 		}
 	}
 
-	if err := apiRequest("RemoteACRecordsRequest.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("RemoteACRecordsRequest.php", nil, &resp); err != nil {
 		return ClimateStatus{}, err
 	}
 
@@ -557,16 +561,12 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 // key" that can be used to poll for status with the
 // CheckClimateOffRequest method.
 func (s *Session) ClimateOffRequest() (string, error) {
-	if s.customSessionID == "" {
-		return "", ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ResultKey string `json:"resultKey"`
 	}
 
-	if err := apiRequest("ACRemoteOffRequest.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("ACRemoteOffRequest.php", nil, &resp); err != nil {
 		return "", err
 	}
 
@@ -577,10 +577,6 @@ func (s *Session) ClimateOffRequest() (string, error) {
 // CheckClimateOffRequest returns whether the ClimateOffRequest has
 // finished.
 func (s *Session) CheckClimateOffRequest(resultKey string) (bool, error) {
-	if s.customSessionID == "" {
-		return false, ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ResponseFlag    int    `json:"responseFlag,string"` // 0 or 1
@@ -589,10 +585,10 @@ func (s *Session) CheckClimateOffRequest(resultKey string) (bool, error) {
 		HVACStatus      string `json:"hvacStatus"`
 	}
 
-	params := s.commonParams()
+	params := url.Values{}
 	params.Set("resultKey", resultKey)
 
-	if err := apiRequest("ACRemoteOffResult.php", params, &resp); err != nil {
+	if err := s.apiRequest("ACRemoteOffResult.php", params, &resp); err != nil {
 		return false, err
 	}
 
@@ -604,16 +600,12 @@ func (s *Session) CheckClimateOffRequest(resultKey string) (bool, error) {
 // key" that can be used to poll for status with the
 // CheckClimateOnRequest method.
 func (s *Session) ClimateOnRequest() (string, error) {
-	if s.customSessionID == "" {
-		return "", ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ResultKey string `json:"resultKey"`
 	}
 
-	if err := apiRequest("ACRemoteRequest.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("ACRemoteRequest.php", nil, &resp); err != nil {
 		return "", err
 	}
 
@@ -624,10 +616,6 @@ func (s *Session) ClimateOnRequest() (string, error) {
 // CheckClimateOnRequest returns whether the ClimateOnRequest has
 // finished.
 func (s *Session) CheckClimateOnRequest(resultKey string) (bool, error) {
-	if s.customSessionID == "" {
-		return false, ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ResponseFlag    int    `json:"responseFlag,string"` // 0 or 1
@@ -637,10 +625,10 @@ func (s *Session) CheckClimateOnRequest(resultKey string) (bool, error) {
 		HVACStatus      string `json:"hvacStatus"`
 	}
 
-	params := s.commonParams()
+	params := url.Values{}
 	params.Set("resultKey", resultKey)
 
-	if err := apiRequest("ACRemoteResult.php", params, &resp); err != nil {
+	if err := s.apiRequest("ACRemoteResult.php", params, &resp); err != nil {
 		return false, err
 	}
 
@@ -649,18 +637,14 @@ func (s *Session) CheckClimateOnRequest(resultKey string) (bool, error) {
 
 // ChargingRequest begins charging a plugged-in vehicle.
 func (s *Session) ChargingRequest() error {
-	if s.customSessionID == "" {
-		return ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 	}
 
-	params := s.commonParams()
+	params := url.Values{}
 	params.Set("ExecuteTime", time.Now().In(s.loc).Format("2006-01-02"))
 
-	if err := apiRequest("BatteryRemoteChargingRequest.php", params, &resp); err != nil {
+	if err := s.apiRequest("BatteryRemoteChargingRequest.php", params, &resp); err != nil {
 		return err
 	}
 
@@ -672,10 +656,6 @@ func (s *Session) ChargingRequest() error {
 // the most recent update is available in the returned VehicleLocation
 // value.
 func (s *Session) LocateVehicle() (VehicleLocation, error) {
-	if s.customSessionID == "" {
-		return VehicleLocation{}, ErrNotLoggedIn
-	}
-
 	var resp struct {
 		baseResponse
 		ReceivedDate cwTime `json:"receivedDate"`
@@ -684,7 +664,7 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 		Lng          string
 	}
 
-	if err := apiRequest("MyCarFinderLatLng.php", s.commonParams(), &resp); err != nil {
+	if err := s.apiRequest("MyCarFinderLatLng.php", nil, &resp); err != nil {
 		return VehicleLocation{}, err
 	}
 
