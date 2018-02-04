@@ -469,11 +469,12 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 		baseResponse
 		BatteryStatusRecords struct {
 			BatteryStatus struct {
-				BatteryChargingStatus    string
-				BatteryCapacity          int `json:",string"`
-				BatteryRemainingAmount   int `json:",string"`
-				BatteryRemainingAmountWH int `json:",string"`
-				SOC                      struct {
+				BatteryChargingStatus     string
+				BatteryCapacity           int `json:",string"`
+				BatteryRemainingAmount    int `json:",string"`
+				BatteryRemainingAmountWH  string
+				BatteryRemainingAmountKWH string
+				SOC                       struct {
 					Value int `json:",string"`
 				}
 			}
