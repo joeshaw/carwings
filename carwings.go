@@ -501,16 +501,8 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 	}
 
 	batrec := resp.BatteryStatusRecords
-
-	acOn, err := batrec.CruisingRangeAcOn.Float64()
-	if err != nil {
-		acOn = 0
-	}
-
-	acOff, err := batrec.CruisingRangeAcOff.Float64()
-	if err != nil {
-		acOff = 0
-	}
+	acOn, _ := batrec.CruisingRangeAcOn.Float64()
+	acOff, _ := batrec.CruisingRangeAcOff.Float64()
 
 	bs := BatteryStatus{
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
