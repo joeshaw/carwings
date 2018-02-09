@@ -479,8 +479,8 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 				}
 			}
 			PluginState        string
-			CruisingRangeAcOn  int `json:",string"`
-			CruisingRangeAcOff int `json:",string"`
+			CruisingRangeAcOn  json.Number `json:",string"`
+			CruisingRangeAcOff json.Number `json:",string"`
 			TimeRequiredToFull struct {
 				HourRequiredToFull    int `json:",string"`
 				MinutesRequiredToFull int `json:",string"`
@@ -501,13 +501,24 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 	}
 
 	batrec := resp.BatteryStatusRecords
+
+	acOn, err := batrec.CruisingRangeAcOn.Float64()
+	if err != nil {
+		acOn = 0
+	}
+
+	acOff, err := batrec.CruisingRangeAcOff.Float64()
+	if err != nil {
+		acOff = 0
+	}
+
 	bs := BatteryStatus{
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
 		Capacity:           batrec.BatteryStatus.BatteryCapacity,
 		Remaining:          batrec.BatteryStatus.BatteryRemainingAmount,
 		StateOfCharge:      batrec.BatteryStatus.SOC.Value,
-		CruisingRangeACOn:  batrec.CruisingRangeAcOn,
-		CruisingRangeACOff: batrec.CruisingRangeAcOff,
+		CruisingRangeACOn:  int(acOn),
+		CruisingRangeACOff: int(acOff),
 		PluginState:        PluginState(batrec.PluginState),
 		ChargingStatus:     ChargingStatus(batrec.BatteryStatus.BatteryChargingStatus),
 		TimeToFull: TimeToFull{
