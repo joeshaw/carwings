@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -503,6 +504,11 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 	batrec := resp.BatteryStatusRecords
 	acOn, _ := batrec.CruisingRangeAcOn.Float64()
 	acOff, _ := batrec.CruisingRangeAcOff.Float64()
+
+	soc := batrec.BatteryStatus.SOC.Value
+	if soc == 0 {
+		soc = int(math.Round(float64(batrec.BatteryStatus.BatteryRemainingAmount) / float64(batrec.BatteryStatus.BatteryCapacity)))
+	}
 
 	bs := BatteryStatus{
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
