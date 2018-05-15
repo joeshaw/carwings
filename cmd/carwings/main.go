@@ -43,6 +43,7 @@ func main() {
 	flag.StringVar(&cfg.email, "email", "", "carwings email address")
 	flag.StringVar(&cfg.password, "password", "", "carwings password")
 	flag.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
+	flag.BoolVar(&carwings.Debug, "debug", false, "debug mode")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -86,6 +87,9 @@ func main() {
 
 	case "locate":
 		run = runLocate
+
+	case "server":
+		run = runServer
 
 	default:
 		usage()
@@ -224,7 +228,7 @@ func runClimateOff(s *carwings.Session, args []string) error {
 }
 
 func runClimateOn(s *carwings.Session, args []string) error {
-	fmt.Println("Sending climate control off request...")
+	fmt.Println("Sending climate control on request...")
 
 	key, err := s.ClimateOnRequest()
 	if err != nil {

@@ -289,6 +289,10 @@ func (r *baseResponse) Status() int {
 }
 
 func apiRequest(endpoint string, params url.Values, target response) error {
+	if Debug {
+		fmt.Fprintf(os.Stderr, "POST %s %s\n", baseURL+endpoint, params)
+	}
+
 	resp, err := http.PostForm(baseURL+endpoint, params)
 	if err != nil {
 		return err
