@@ -52,13 +52,26 @@ func runServer(s *carwings.Session, args []string) error {
 
 	go updateLoop(ctx, s)
 
+	const timeout = 5 * time.Second
+
 	http.HandleFunc("/charging/on", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
-			err := s.ChargingRequest()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			fmt.Println("Charging request")
+
+			ch := make(chan error, 1)
+			go func() {
+				ch <- s.ChargingRequest()
+			}()
+
+			select {
+			case err := <-ch:
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+
+			case <-time.After(timeout):
+				w.WriteHeader(http.StatusAccepted)
 			}
 
 		default:
@@ -70,10 +83,22 @@ func runServer(s *carwings.Session, args []string) error {
 	http.HandleFunc("/climate/on", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
-			_, err := s.ClimateOnRequest()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			fmt.Println("Climate control on request")
+
+			ch := make(chan error, 1)
+			go func() {
+				_, err := s.ClimateOnRequest()
+				ch <- err
+			}()
+
+			select {
+			case err := <-ch:
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+
+			case <-time.After(timeout):
+				w.WriteHeader(http.StatusAccepted)
 			}
 
 		default:
@@ -85,10 +110,22 @@ func runServer(s *carwings.Session, args []string) error {
 	http.HandleFunc("/climate/off", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
-			_, err := s.ClimateOffRequest()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+			fmt.Println("Climate control off request")
+
+			ch := make(chan error, 1)
+			go func() {
+				_, err := s.ClimateOffRequest()
+				ch <- err
+			}()
+
+			select {
+			case err := <-ch:
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+
+			case <-time.After(timeout):
+				w.WriteHeader(http.StatusAccepted)
 			}
 
 		default:
