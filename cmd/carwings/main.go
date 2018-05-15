@@ -53,6 +53,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	if v := os.Getenv("CARWINGS_EMAIL"); v != "" && cfg.email == "" {
+		cfg.email = v
+	}
+
+	if v := os.Getenv("CARWINGS_PASSWORD"); v != "" && cfg.password == "" {
+		cfg.password = v
+	}
+
 	if cfg.email == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: -email must be provided\n")
 		os.Exit(1)
