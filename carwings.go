@@ -536,27 +536,38 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 // ClimateControlStatus returns the most recent climate control status
 // from the Carwings service.
 func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
+	type remoteACRecords struct {
+		OperationResult        string
+		OperationDateAndTime   cwTime
+		RemoteACOperation      string
+		ACStartStopDateAndTime cwTime
+		ACStartStopURL         string
+		PluginState            string
+		ACDurationBatterySec   int `json:",string"`
+		ACDurationPluggedSec   int `json:",string"`
+		PreAC_unit             string
+		PreAC_temp             int `json:",string"`
+	}
+
 	var resp struct {
 		baseResponse
-		RemoteACRecords struct {
-			OperationResult        string
-			OperationDateAndTime   cwTime
-			RemoteACOperation      string
-			ACStartStopDateAndTime cwTime
-			ACStartStopURL         string
-			PluginState            string
-			ACDurationBatterySec   int `json:",string"`
-			ACDurationPluggedSec   int `json:",string"`
-			PreAC_unit             string
-			PreAC_temp             int `json:",string"`
-		}
+		RemoteACRecords json.RawMessage
 	}
 
 	if err := s.apiRequest("RemoteACRecordsRequest.php", nil, &resp); err != nil {
 		return ClimateStatus{}, err
 	}
 
-	racr := resp.RemoteACRecords
+	// Sometimes the RemoteACRecords field is an empty array
+	// instead of a struct value.  This API... ¯\_(ツ)_/¯
+	if string(resp.RemoteACRecords) == "[]" {
+		return ClimateStatus{}, errors.New("climate status not available")
+	}
+
+	var racr remoteACRecords
+	if err := json.Unmarshal(resp.RemoteACRecords, &racr); err != nil {
+		return ClimateStatus{}, err
+	}
 
 	cs := ClimateStatus{
 		Running:         racr.RemoteACOperation == "START",
