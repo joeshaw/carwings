@@ -323,8 +323,6 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 	default:
 		return fmt.Errorf("received status code %d", s)
 	}
-
-	return nil
 }
 
 // Connect establishes a new authenticated Session with the Carwings
