@@ -83,6 +83,14 @@ const (
 	RegionJapan     = "NML"
 )
 
+type Config struct {
+	Username    string
+	Password    string
+	Region      string
+	SiUnits     bool
+	SessionFile string
+}
+
 // Session defines a one or more connections to the Carwings service
 type Session struct {
 	username        string
@@ -92,6 +100,7 @@ type Session struct {
 	customSessionID string
 	tz              string
 	loc             *time.Location
+	SiUnits         bool
 }
 
 // ClimateStatus contains information about the vehicle's climate
