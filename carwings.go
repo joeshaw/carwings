@@ -56,9 +56,7 @@ func encrypt(s, key string) (string, error) {
 	}
 
 	src := []byte(s)
-	if len(src)%cipher.BlockSize() != 0 {
-		src = pkcs5Padding(src, cipher.BlockSize())
-	}
+	src = pkcs5Padding(src, cipher.BlockSize())
 
 	dst := make([]byte, len(src))
 	pos := 0
