@@ -351,8 +351,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 	}
 }
 
-// Connect establishes a new authenticated Session with the Carwings
-// service.
+// Connect loads an existing saved session, or initialises a new one
 func Connect(cfg Config) (*Session, error) {
 	var err error
 
