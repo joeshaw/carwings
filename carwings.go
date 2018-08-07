@@ -674,6 +674,9 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 			Level2At6kW: time.Duration(batrec.TimeRequiredToFull200_6kW.HourRequiredToFull)*time.Hour + time.Duration(batrec.TimeRequiredToFull200_6kW.MinutesRequiredToFull)*time.Minute,
 		},
 	}
+	if bs.StateOfCharge == 0 && bs.Remaining != 0 && bs.Capacity != 0 {
+		bs.StateOfCharge = (bs.Remaining * 100) / bs.Capacity
+	}
 
 	return bs, nil
 }
