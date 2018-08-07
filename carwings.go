@@ -380,15 +380,37 @@ func (s *Session) Login() error {
 	var loginResp struct {
 		baseResponse
 
-		VehicleInfoList struct {
-			VehicleInfo []struct {
-				VIN             string `json:"vin"`
-				CustomSessionID string `json:"custom_sessionid"`
-			} `json:"vehicleInfo"`
-		}
+		VehicleInfo []struct {
+			VIN               string `json:"vin"`
+			Nickname          string `json:"nickname,omitempty"`
+			Charger20066      string `json:"charger20066,omitempty"`
+			TelematicsEnabled string `json:"telematicsEnabled,omitempty"`
+			CustomSessionID   string `json:"custom_sessionid"`
+		} `json:"vehicleInfo"`
 
 		CustomerInfo struct {
-			Timezone string
+			Timezone                    string
+			Language                    string
+			OwnerId                     string
+			EMailAddress                string
+			Nickname                    string
+			Country                     string
+			VehicleImage                string
+			UserVehicleBoundDurationSec string
+			VehicleInfo                 struct {
+				VIN                  string
+				DCMID                string
+				SIMID                string
+				NAVIID               string
+				EncryptedNAVIID      string
+				MSN                  string
+				LastVehicleLoginTime string
+				UserVehicleBoundTime string
+				LastDCMUseTime       string
+				NonaviFlg            string
+				CarName              string
+				CarImage             string
+			}
 		}
 	}
 	if err := apiRequest("UserLoginRequest.php", params, &loginResp); err != nil {
@@ -399,7 +421,7 @@ func (s *Session) Login() error {
 	if err != nil {
 		loc = time.UTC
 	}
-	vi := loginResp.VehicleInfoList.VehicleInfo[0]
+	vi := loginResp.VehicleInfo[0]
 
 	s.loc = loc
 	s.customSessionID = vi.CustomSessionID
