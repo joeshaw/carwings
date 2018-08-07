@@ -262,12 +262,16 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// Carwings uses two different date formats 🙄🙄🙄
+	// Carwings uses three different date formats 🙄🙄🙄
 	t, err := time.Parse(`"2006\/01\/02 15:04"`, string(data))
 	if err != nil {
 		t, err = time.Parse(`"2006-01-02 15:04:05"`, string(data))
 		if err != nil {
-			return fmt.Errorf("cannot parse %q as carwings time", string(data))
+			// Also e.g. "UserVehicleBoundTime": "2018-08-04T15:08:33Z"
+			t, err = time.Parse(`"2006-01-02T15:04:05Z"`, string(data))
+			if err != nil {
+				return fmt.Errorf("cannot parse %q as carwings time", string(data))
+			}
 		}
 	}
 
