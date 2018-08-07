@@ -44,17 +44,19 @@ For some people the username is an email address.  For others it's a
 distinct username.
 
 Usernames and passwords can also be provided through the environment
-variables `CARWINGS_USERNAME` and `CARWINGS_PASSWORD` or in a
-`~/.carwings` file in the format:
+variables `CARWINGS_USERNAME`, `CARWINGS_PASSWORD` and `CARWINGS_REGION`
+or in a `~/.carwingsrc` file in the format:
 
 ```
-username: <username>
-password: <password>
+username=<username>
+password=<password>
+region=<eu|au|jp|ca|us>
+sessionfile=<filename for saving sessions>
+units=<km|miles>
 ```
 
-### TODO
-
-- [ ] Save authentication token somewhere, so we don't re-login on every run.
+If the `sessionfile` is set in the configuration then the session data will be
+read from that file, if present, and written to it if it is missing.
 
 ## Carwings protocol
 
