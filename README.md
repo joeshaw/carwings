@@ -67,6 +67,9 @@ https://github.com/joshperry/carwings
 Jason Horne has a Python implementation:
 https://github.com/jdhorne/pycarwings2
 
+Guillaume Boudreau has a PHP implementation:
+https://github.com/gboudreau/nissan-connect-php
+
 Scott Helme created a Javascript Alexa skill:
 https://github.com/ScottHelme/AlexaNissanLeaf
 

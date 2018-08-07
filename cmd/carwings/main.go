@@ -308,6 +308,29 @@ func runClimateOn(s *carwings.Session, args []string) error {
 }
 
 func runLocate(s *carwings.Session, args []string) error {
+	fmt.Println("Sending locate request...")
+
+	key, err := s.LocateRequest()
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	for {
+		fmt.Println("Checking if locate request finished...")
+		done, err := s.CheckLocateRequest(key)
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		if time.Since(start) > 2*time.Minute {
+			return errors.New("timed out waiting for update")
+		}
+		time.Sleep(5 * time.Second)
+	}
+
 	fmt.Println("Getting latest vehicle position...")
 
 	vl, err := s.LocateVehicle()
