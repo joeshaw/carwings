@@ -354,7 +354,24 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 
 // Connect establishes a new authenticated Session with the Carwings
 // service.
-func Connect(username, password, region string) (*Session, error) {
+func Connect(cfg Config) (*Session, error) {
+	var err error
+
+	s := &Session{
+		username: cfg.Username,
+		region:   cfg.Region,
+		SiUnits:  cfg.SiUnits,
+	}
+
+	if cfg.SessionFile != "" {
+		err = s.Load(cfg.SessionFile)
+		if err == nil && s.customSessionID != "" && s.VIN != "" {
+			return s, nil
+		} else {
+			fmt.Fprintln(os.Stderr, "ERROR: ", err.Error())
+		}
+	}
+
 	params := url.Values{}
 	params.Set("initial_app_strings", initialAppStrings)
 
@@ -367,18 +384,96 @@ func Connect(username, password, region string) (*Session, error) {
 		return nil, err
 	}
 
-	encpw, err := encrypt(password, initResp.Baseprm)
+	s.encpw, err = encrypt(cfg.Password, initResp.Baseprm)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &Session{
-		username: username,
-		encpw:    encpw,
-		region:   region,
+	err = s.Login()
+	if err == nil {
+		if cfg.SessionFile != "" && s.customSessionID != "" && s.VIN != "" {
+			err = s.Save(cfg.SessionFile)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "ERROR: ", err.Error())
+			}
+		}
+		return s, nil
 	}
 
-	return s, s.Login()
+	return s, err
+}
+
+type sessionData struct {
+	CustomSessionID string
+	VIN             string
+	RegionCode      string
+	TimeZone        string
+	SiUnits         bool
+}
+
+func (s Session) Save(fileName string) error {
+	if fileName == "" {
+		return nil
+	}
+	if fileName[0] == '~' {
+		fileName = os.Getenv("HOME") + fileName[1:]
+	}
+
+	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+
+	sd := sessionData{
+		CustomSessionID: s.customSessionID,
+		VIN:             s.VIN,
+		RegionCode:      s.region,
+		TimeZone:        s.tz,
+		SiUnits:         s.SiUnits,
+	}
+
+	data, _ := json.Marshal(sd)
+	_, err = f.Write(data)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+func (s *Session) Load(fileName string) error {
+	if fileName == "" {
+		return nil
+	}
+	if fileName[0] == '~' {
+		fileName = os.Getenv("HOME") + fileName[1:]
+	}
+
+	f, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+
+	sd := sessionData{}
+	decoder := json.NewDecoder(f)
+	err = decoder.Decode(&sd)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	s.customSessionID = sd.CustomSessionID
+	s.VIN = sd.VIN
+	s.region = sd.RegionCode
+	s.tz = sd.TimeZone
+	s.SiUnits = sd.SiUnits
+
+	s.loc, err = time.LoadLocation(s.tz)
+	if err != nil {
+		s.loc = time.Local
+		s.tz = time.Local.String()
+	}
+
+	return nil
 }
 
 func (s *Session) Login() error {
@@ -426,19 +521,22 @@ func (s *Session) Login() error {
 			}
 		}
 	}
-	if err := apiRequest("UserLoginRequest.php", params, &loginResp); err != nil {
+	var err error
+	if err = apiRequest("UserLoginRequest.php", params, &loginResp); err != nil {
 		return err
 	}
 
-	loc, err := time.LoadLocation(loginResp.CustomerInfo.Timezone)
-	if err != nil {
-		loc = time.UTC
-	}
 	vi := loginResp.VehicleInfo[0]
 
-	s.loc = loc
 	s.customSessionID = vi.CustomSessionID
 	s.VIN = vi.VIN
+	s.tz = loginResp.CustomerInfo.Timezone
+
+	s.loc, err = time.LoadLocation(s.tz)
+	if err != nil {
+		s.loc = time.Local
+		s.tz = time.Local.String()
+	}
 
 	return nil
 }
