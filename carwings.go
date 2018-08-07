@@ -11,6 +11,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/blowfish"
@@ -276,14 +277,26 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 
 type response interface {
 	Status() int
+	ErrorMessage() string
 }
 
 type baseResponse struct {
-	StatusCode int `json:"status"`
+	StatusCode json.RawMessage `json:"status"`
+	Message    string          `json:"message"`
 }
 
 func (r *baseResponse) Status() int {
-	return r.StatusCode
+	s := r.StatusCode
+	if s[0] == '"' {
+		s = s[1 : len(s)-1]
+	}
+
+	v, _ := strconv.Atoi(string(s))
+	return v
+}
+
+func (r *baseResponse) ErrorMessage() string {
+	return r.Message
 }
 
 func apiRequest(endpoint string, params url.Values, target response) error {
@@ -319,6 +332,9 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 		return ErrNotLoggedIn
 
 	default:
+		if e := target.ErrorMessage(); e != "" {
+			return fmt.Errorf("received status code %d (%s)", s, e)
+		}
 		return fmt.Errorf("received status code %d", s)
 	}
 }
