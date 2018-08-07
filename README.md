@@ -20,11 +20,11 @@ Run `carwings` by itself to see full usage information.
 
 To update vehicle information:
 
-    carwings -email <email> -password <password> update
+    carwings -username <username> -password <password> update
 
 To get latest battery status:
 
-    carwings -email <email> -password <password> battery
+    carwings -username <username> -password <password> battery
 
 This will print something like:
 
@@ -40,9 +40,20 @@ This will print something like:
         Level 2 charge: 3h0m0s
         Level 2 at 6 kW: 2h30m0s
 
+For some people the username is an email address.  For others it's a
+distinct username.
+
+Usernames and passwords can also be provided through the environment
+variables `CARWINGS_USERNAME` and `CARWINGS_PASSWORD` or in a
+`~/.carwings` file in the format:
+
+```
+username: <username>
+password: <password>
+```
+
 ### TODO
 
-- [ ] Don't require password on the CLI
 - [ ] Save authentication token somewhere, so we don't re-login on every run.
 
 ## Carwings protocol
@@ -66,7 +77,7 @@ sure the code has been run through `gofmt`.
 
 ## License
 
-Copyright 2017 Joe Shaw
+Copyright 2017-2018 Joe Shaw
 
 `carwings` is licensed under the MIT License.  See the LICENSE file
 for details.

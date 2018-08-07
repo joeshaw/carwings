@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,7 +15,7 @@ import (
 )
 
 type config struct {
-	email    string
+	username string
 	password string
 	region   string
 }
@@ -40,7 +43,7 @@ func usage() {
 func main() {
 	var cfg config
 
-	flag.StringVar(&cfg.email, "email", "", "carwings email address")
+	flag.StringVar(&cfg.username, "username", "", "carwings username")
 	flag.StringVar(&cfg.password, "password", "", "carwings password")
 	flag.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
 	flag.BoolVar(&carwings.Debug, "debug", false, "debug mode")
@@ -53,16 +56,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	if v := os.Getenv("CARWINGS_EMAIL"); v != "" && cfg.email == "" {
-		cfg.email = v
+	if v := os.Getenv("CARWINGS_USERNAME"); v != "" && cfg.username == "" {
+		cfg.username = v
 	}
 
 	if v := os.Getenv("CARWINGS_PASSWORD"); v != "" && cfg.password == "" {
 		cfg.password = v
 	}
 
-	if cfg.email == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: -email must be provided\n")
+	u, pw := readDotfile()
+	if u != "" && cfg.username == "" {
+		cfg.username = u
+	}
+	if pw != "" && cfg.password == "" {
+		cfg.password = pw
+	}
+
+	if cfg.username == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: -username must be provided (it used to be -email)\n")
 		os.Exit(1)
 	}
 
@@ -106,7 +117,7 @@ func main() {
 
 	fmt.Println("Logging into Carwings...")
 
-	s, err := carwings.Connect(cfg.email, cfg.password, cfg.region)
+	s, err := carwings.Connect(cfg.username, cfg.password, cfg.region)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
@@ -116,6 +127,39 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func readDotfile() (string, string) {
+	u, err := user.Current()
+	if err != nil {
+		return "", ""
+	}
+
+	f, err := os.Open(filepath.Join(u.HomeDir, ".carwings"))
+	if err != nil {
+		return "", ""
+	}
+	defer f.Close()
+
+	const (
+		usernamePrefix = "username: "
+		passwordPrefix = "password: "
+	)
+
+	var username, password string
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		l := s.Text()
+		switch {
+		case strings.HasPrefix(l, usernamePrefix):
+			username = l[len(usernamePrefix):]
+		case strings.HasPrefix(l, passwordPrefix):
+			password = l[len(passwordPrefix):]
+		}
+	}
+
+	return username, password
 }
 
 func runUpdate(s *carwings.Session, args []string) error {
