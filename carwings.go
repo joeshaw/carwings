@@ -93,9 +93,8 @@ type Config struct {
 
 // Session defines a one or more connections to the Carwings service
 type Session struct {
-	username        string
+	config          Config
 	encpw           string
-	region          string
 	VIN             string
 	customSessionID string
 	tz              string
@@ -358,9 +357,8 @@ func Connect(cfg Config) (*Session, error) {
 	var err error
 
 	s := &Session{
-		username: cfg.Username,
-		region:   cfg.Region,
-		SiUnits:  cfg.SiUnits,
+		config:  cfg,
+		SiUnits: cfg.SiUnits,
 	}
 
 	if cfg.SessionFile != "" {
@@ -372,35 +370,7 @@ func Connect(cfg Config) (*Session, error) {
 		}
 	}
 
-	params := url.Values{}
-	params.Set("initial_app_strings", initialAppStrings)
-
-	var initResp struct {
-		baseResponse
-		Message string `json:"message"`
-		Baseprm string `json:"baseprm"`
-	}
-	if err := apiRequest("InitialApp.php", params, &initResp); err != nil {
-		return nil, err
-	}
-
-	s.encpw, err = encrypt(cfg.Password, initResp.Baseprm)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.Login()
-	if err == nil {
-		if cfg.SessionFile != "" && s.customSessionID != "" && s.VIN != "" {
-			err = s.Save(cfg.SessionFile)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "ERROR: ", err.Error())
-			}
-		}
-		return s, nil
-	}
-
-	return s, err
+	return s, s.connect()
 }
 
 type sessionData struct {
@@ -409,6 +379,48 @@ type sessionData struct {
 	RegionCode      string
 	TimeZone        string
 	SiUnits         bool
+}
+
+// connect may be called after a 401 response to reconnect the session
+//
+// If connect returns without error then it should be OK to retry the
+// request which previously returned the 401 response
+func (s *Session) connect() error {
+	if s.config.SessionFile == "" {
+		return nil
+	}
+
+	params := url.Values{}
+	params.Set("initial_app_strings", initialAppStrings)
+
+	var initResp struct {
+		baseResponse
+		Message string `json:"message"`
+		Baseprm string `json:"baseprm"`
+	}
+
+	err := apiRequest("InitialApp.php", params, &initResp)
+	if err != nil {
+		return err
+	}
+
+	s.encpw, err = encrypt(s.config.Password, initResp.Baseprm)
+	if err != nil {
+		return err
+	}
+
+	err = s.Login()
+	if err != nil {
+		return err
+	}
+
+	if s.config.SessionFile != "" && s.customSessionID != "" && s.VIN != "" {
+		err = s.Save(s.config.SessionFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ERROR: ", err.Error())
+		}
+	}
+	return nil
 }
 
 func (s Session) Save(fileName string) error {
@@ -427,7 +439,6 @@ func (s Session) Save(fileName string) error {
 	sd := sessionData{
 		CustomSessionID: s.customSessionID,
 		VIN:             s.VIN,
-		RegionCode:      s.region,
 		TimeZone:        s.tz,
 		SiUnits:         s.SiUnits,
 	}
@@ -463,7 +474,6 @@ func (s *Session) Load(fileName string) error {
 
 	s.customSessionID = sd.CustomSessionID
 	s.VIN = sd.VIN
-	s.region = sd.RegionCode
 	s.tz = sd.TimeZone
 	s.SiUnits = sd.SiUnits
 
@@ -480,9 +490,9 @@ func (s *Session) Login() error {
 	params := url.Values{}
 	params.Set("initial_app_strings", initialAppStrings)
 
-	params.Set("UserId", s.username)
+	params.Set("UserId", s.config.Username)
 	params.Set("Password", s.encpw)
-	params.Set("RegionCode", s.region)
+	params.Set("RegionCode", s.config.Region)
 
 	// Not a comprehensive representation, just what we need
 	var loginResp struct {
@@ -546,7 +556,7 @@ func (s *Session) apiRequest(endpoint string, params url.Values, target response
 
 	err := apiRequest(endpoint, params, target)
 	if err == ErrNotLoggedIn {
-		if err := s.Login(); err != nil {
+		if err := s.connect(); err != nil {
 			return err
 		}
 
@@ -563,7 +573,7 @@ func (s *Session) setCommonParams(params url.Values) url.Values {
 		params = url.Values{}
 	}
 
-	params.Set("RegionCode", s.region)
+	params.Set("RegionCode", s.config.Region)
 	params.Set("VIN", s.VIN)
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
