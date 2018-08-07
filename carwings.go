@@ -258,7 +258,7 @@ const (
 type cwTime time.Time
 
 func (cwt *cwTime) UnmarshalJSON(data []byte) error {
-	if data == nil {
+	if data == nil || string(data) == `""` {
 		return nil
 	}
 
@@ -703,6 +703,10 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 
 	if err := s.apiRequest("MyCarFinderLatLng.php", nil, &resp); err != nil {
 		return VehicleLocation{}, err
+	}
+
+	if time.Time(resp.ReceivedDate).IsZero() {
+		return VehicleLocation{}, errors.New("no location data available")
 	}
 
 	return VehicleLocation{
