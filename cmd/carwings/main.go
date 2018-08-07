@@ -1,24 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/joeshaw/carwings"
+	"regexp"
 )
-
-type config struct {
-	username string
-	password string
-	region   string
-}
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "USAGE\n")
@@ -37,53 +29,67 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 	fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
+	fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
 	fmt.Fprintf(os.Stderr, "\n")
 }
 
 func main() {
-	var cfg config
+	var cfg carwings.Config
+	var configFile string
 
-	flag.StringVar(&cfg.username, "username", "", "carwings username")
-	flag.StringVar(&cfg.password, "password", "", "carwings password")
-	flag.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
+	flag.StringVar(&cfg.Username, "username", "", "carwings username")
+	flag.StringVar(&cfg.Password, "password", "", "carwings password")
+	flag.StringVar(&cfg.Region, "region", carwings.RegionUSA, "carwings region")
+	flag.StringVar(&configFile, "config", "~/.carwingsrc", "configuration filename")
 	flag.BoolVar(&carwings.Debug, "debug", false, "debug mode")
 	flag.Usage = usage
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		usage()
+	err := loadConfig(configFile, &cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
 	}
 
-	if v := os.Getenv("CARWINGS_USERNAME"); v != "" && cfg.username == "" {
-		cfg.username = v
+	if v := os.Getenv("CARWINGS_EMAIL"); v != "" && cfg.Username == "" {
+		cfg.Username = v
 	}
 
-	if v := os.Getenv("CARWINGS_PASSWORD"); v != "" && cfg.password == "" {
-		cfg.password = v
+	if v := os.Getenv("CARWINGS_PASSWORD"); v != "" && cfg.Password == "" {
+		cfg.Password = v
 	}
 
-	u, pw := readDotfile()
-	if u != "" && cfg.username == "" {
-		cfg.username = u
-	}
-	if pw != "" && cfg.password == "" {
-		cfg.password = pw
+	if v := os.Getenv("CARWINGS_REGION"); v != "" && cfg.Region == "" {
+		cfg.Region = v
 	}
 
-	if cfg.username == "" {
-		fmt.Fprintf(os.Stderr, "ERROR: -username must be provided (it used to be -email)\n")
+	// Allow use of some more intuitive region names and translate to CarWings regions
+	switch strings.ToLower(cfg.Region) {
+	case "eu":
+		cfg.Region = carwings.RegionEurope
+	case "au":
+		cfg.Region = carwings.RegionAustralia
+	case "us":
+		cfg.Region = carwings.RegionUSA
+	case "jp":
+		cfg.Region = carwings.RegionJapan
+	case "ca":
+		cfg.Region = carwings.RegionCanada
+	}
+
+	if cfg.Username == "" {
+		fmt.Fprintf(os.Stderr, "ERROR: -email must be provided\n")
 		os.Exit(1)
 	}
 
-	if cfg.password == "" {
+	if cfg.Password == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: -password must be provided\n")
 		os.Exit(1)
 	}
 
 	var run func(*carwings.Session, []string) error
 
+	args := flag.Args()
 	cmd, args := strings.ToLower(args[0]), args[1:]
 	switch cmd {
 	case "update":
@@ -117,7 +123,7 @@ func main() {
 
 	fmt.Println("Logging into Carwings...")
 
-	s, err := carwings.Connect(cfg.username, cfg.password, cfg.region)
+	s, err := carwings.Connect(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
@@ -129,37 +135,77 @@ func main() {
 	}
 }
 
-func readDotfile() (string, string) {
-	u, err := user.Current()
-	if err != nil {
-		return "", ""
+// loadConfig will load a config file like:
+//   # this is a carwings configuration file
+//   username=andrew@somedomain.net
+//   password=5upr3m31y53cr3t
+//   region=eu|us|jp|au|ca
+//   units=miles|km
+//   sessionfile=~/.carwings_session
+// It is _NOT_ an error for the named file to be missing
+func loadConfig(filename string, cfg *carwings.Config) error {
+	if filename == "" {
+		return nil
 	}
-
-	f, err := os.Open(filepath.Join(u.HomeDir, ".carwings"))
-	if err != nil {
-		return "", ""
+	if filename[0] == '~' {
+		filename = os.Getenv("HOME") + filename[1:]
 	}
-	defer f.Close()
+	fi, err := os.Stat(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to stat '%s': %s", filename, err.Error())
+		return nil
+	}
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	buff := make([]byte, fi.Size())
+	f.Read(buff)
+	f.Close()
+	str := string(buff)
+	if !strings.HasSuffix(str, "\n") {
+		return errors.New("Config file does not end with a newline character.")
+	}
+	re := regexp.MustCompile("[#].*\\n|\\s+\\n|\\S+[=]|.*\n")
+	s2 := re.FindAllString(str, -1)
 
-	const (
-		usernamePrefix = "username: "
-		passwordPrefix = "password: "
-	)
+	for i := 0; i < len(s2); {
+		if strings.HasPrefix(s2[i], "#") {
+			i++
+		} else if strings.HasSuffix(s2[i], "=") {
+			key := strings.ToLower(s2[i])[0 : len(s2[i])-1]
+			i++
+			if strings.HasSuffix(s2[i], "\n") {
+				val := s2[i][0 : len(s2[i])-1]
+				if strings.HasSuffix(val, "\r") {
+					val = val[0 : len(val)-1]
+				}
+				i++
 
-	var username, password string
-
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		l := s.Text()
-		switch {
-		case strings.HasPrefix(l, usernamePrefix):
-			username = l[len(usernamePrefix):]
-		case strings.HasPrefix(l, passwordPrefix):
-			password = l[len(passwordPrefix):]
+				switch strings.ToLower(key) {
+				case "username":
+					cfg.Username = val
+				case "password":
+					cfg.Password = val
+				case "region":
+					cfg.Region = val
+				case "units":
+					if val == "miles" {
+						cfg.SiUnits = false
+					} else {
+						cfg.SiUnits = true
+					}
+				case "sessionfile":
+					cfg.SessionFile = val
+				}
+			}
+		} else if strings.Index(" \t\r\n", s2[i][0:1]) > -1 {
+			i++
+		} else {
+			return errors.New("Unable to process line in cfg file containing " + s2[i])
 		}
 	}
-
-	return username, password
+	return nil
 }
 
 func runUpdate(s *carwings.Session, args []string) error {
