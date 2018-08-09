@@ -279,6 +279,23 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// FixLocation alters the location associated with the time, without changing
+// the value.  This is needed since all times are parsed as if they were UTC
+// when in fact some of them are in the timezone specified in the session.
+func (cwt cwTime) FixLocation(location *time.Location) cwTime {
+	t := time.Time(cwt)
+	return cwTime(time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		t.Hour(),
+		t.Minute(),
+		t.Second(),
+		t.Nanosecond(),
+		location,
+	))
+}
+
 type response interface {
 	Status() int
 	ErrorMessage() string
