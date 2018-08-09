@@ -281,6 +281,18 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// FixLocation alters the location associated with the time, without changing
+// the value.  This is needed since all times are parsed as if they were UTC
+// when in fact some of them are in the timezone specified in the session.
+func (cwt cwTime) FixLocation(location *time.Location) cwTime {
+	// We use time.ANSIC since it omits any timezone information
+	t, err := time.ParseInLocation(time.ANSIC, time.Time(cwt).Format(time.ANSIC), location)
+	if err != nil {
+		return cwt
+	}
+	return cwTime(t)
+}
+
 type PollCheckFunction func(string) (bool, error)
 
 type response interface {
