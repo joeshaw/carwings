@@ -69,6 +69,10 @@ https://github.com/gboudreau/nissan-connect-php
 Scott Helme created a Javascript Alexa skill:
 https://github.com/ScottHelme/AlexaNissanLeaf
 
+Tobias Westergaard Kjeldsen has created a Dart library for carwings as well as an Android app:
+https://gitlab.com/tobiaswkjeldsen/dartcarwings
+https://gitlab.com/tobiaswkjeldsen/carwingsflutter
+
 ## Contributing
 
 Issues and pull requests are welcome.  When filing a PR, please make
