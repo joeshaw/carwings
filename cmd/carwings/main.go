@@ -194,6 +194,32 @@ func prettyUnits(units string, meters int) string {
 	panic("should not be reached")
 }
 
+// waitForResult will poll using the supplied method until either success or error
+func waitForResult(key string, poll func(string) (bool, error)) error {
+	// All requests take more than 3 seconds, so wait this before even trying
+	time.Sleep(3 * time.Second)
+
+	start := time.Now()
+	for {
+		fmt.Print("+")
+		done, err := poll(key)
+		if done {
+			break
+		}
+		if time.Since(start) > time.Minute {
+			err = errors.New("timed out waiting for update")
+		}
+		if err != nil {
+			fmt.Println("! :-(")
+			return err
+		}
+		time.Sleep(3 * time.Second)
+	}
+
+	fmt.Println(" :-)")
+	return nil
+}
+
 func runUpdate(s *carwings.Session, cfg config, args []string) error {
 	fmt.Println("Requesting update from Carwings...")
 
@@ -202,24 +228,8 @@ func runUpdate(s *carwings.Session, cfg config, args []string) error {
 		return err
 	}
 
-	start := time.Now()
-	for {
-		fmt.Println("Checking if update finished...")
-		done, err := s.CheckUpdate(key)
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		if time.Since(start) > 2*time.Minute {
-			return errors.New("timed out waiting for update")
-		}
-		time.Sleep(5 * time.Second)
-	}
-
-	fmt.Println("Update complete")
-	return nil
+	fmt.Print("Waiting for update to complete... ")
+	return waitForResult(key, s.CheckUpdate)
 }
 
 func runBattery(s *carwings.Session, cfg config, args []string) error {
@@ -300,24 +310,12 @@ func runClimateOff(s *carwings.Session, cfg config, args []string) error {
 		return err
 	}
 
-	start := time.Now()
-	for {
-		fmt.Println("Checking if climate control update finished...")
-		done, err := s.CheckClimateOffRequest(key)
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		if time.Since(start) > 2*time.Minute {
-			return errors.New("timed out waiting for update")
-		}
-		time.Sleep(5 * time.Second)
+	fmt.Print("Waiting for climate control update to complete... ")
+	err = waitForResult(key, s.CheckClimateOffRequest)
+	if err == nil {
+		fmt.Println("Climate control turned on")
 	}
-
-	fmt.Println("Climate control turned off")
-	return nil
+	return err
 }
 
 func runClimateOn(s *carwings.Session, cfg config, args []string) error {
@@ -328,24 +326,13 @@ func runClimateOn(s *carwings.Session, cfg config, args []string) error {
 		return err
 	}
 
-	start := time.Now()
-	for {
-		fmt.Println("Checking if climate control update finished...")
-		done, err := s.CheckClimateOnRequest(key)
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		if time.Since(start) > 2*time.Minute {
-			return errors.New("timed out waiting for update")
-		}
-		time.Sleep(5 * time.Second)
-	}
+	fmt.Print("Waiting for climate control update to complete... ")
+	err = waitForResult(key, s.CheckClimateOnRequest)
 
-	fmt.Println("Climate control turned on")
-	return nil
+	if err == nil {
+		fmt.Println("Climate control turned on")
+	}
+	return err
 }
 
 func runLocate(s *carwings.Session, cfg config, args []string) error {
@@ -356,20 +343,10 @@ func runLocate(s *carwings.Session, cfg config, args []string) error {
 		return err
 	}
 
-	start := time.Now()
-	for {
-		fmt.Println("Checking if locate request finished...")
-		done, err := s.CheckLocateRequest(key)
-		if err != nil {
-			return err
-		}
-		if done {
-			break
-		}
-		if time.Since(start) > 2*time.Minute {
-			return errors.New("timed out waiting for update")
-		}
-		time.Sleep(5 * time.Second)
+	fmt.Print("Waiting for location update to complete... ")
+	err = waitForResult(key, s.CheckLocateRequest)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("Getting latest vehicle position...")
