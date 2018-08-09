@@ -281,6 +281,8 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type PollCheckFunction func(string) (bool, error)
+
 type response interface {
 	Status() int
 	ErrorMessage() string
@@ -591,6 +593,33 @@ func (s Session) UnitsName() string {
 		return "km"
 	}
 	return "miles"
+}
+
+// WaitForResult will poll using the supplied method until either success or error
+func (s *Session) WaitForResult(key string, method PollCheckFunction) error {
+
+	// All requests take more than 10 seconds, so wait this before even trying
+	time.Sleep(10 * time.Second)
+
+	start := time.Now()
+	for {
+		fmt.Print("+")
+		done, err := method(key)
+		if done {
+			break
+		}
+		if time.Since(start) > time.Minute {
+			err = errors.New("timed out waiting for update")
+		}
+		if err != nil {
+			fmt.Println("! :-(")
+			return err
+		}
+		time.Sleep(3 * time.Second)
+	}
+
+	fmt.Println(" :-)")
+	return nil
 }
 
 // UpdateStatus asks the Carwings service to request an update from
