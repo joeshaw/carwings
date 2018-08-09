@@ -40,6 +40,7 @@ func main() {
 	flag.StringVar(&cfg.Username, "username", "", "carwings username")
 	flag.StringVar(&cfg.Password, "password", "", "carwings password")
 	flag.StringVar(&cfg.Region, "region", carwings.RegionUSA, "carwings region")
+	flag.StringVar(&cfg.TimeZone, "timezone", "", "carwings timezone")
 	flag.StringVar(&configFile, "config", "~/.carwingsrc", "configuration filename")
 	flag.BoolVar(&carwings.Debug, "debug", false, "debug mode")
 	flag.Usage = usage
@@ -189,6 +190,8 @@ func loadConfig(filename string, cfg *carwings.Config) error {
 					cfg.Password = val
 				case "region":
 					cfg.Region = val
+				case "timezone":
+					cfg.TimeZone = val
 				case "units":
 					if val == "miles" {
 						cfg.SiUnits = false

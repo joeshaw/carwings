@@ -89,6 +89,7 @@ type Config struct {
 	Region      string
 	SiUnits     bool
 	SessionFile string
+	TimeZone    string
 }
 
 // Session defines a one or more connections to the Carwings service
@@ -408,6 +409,10 @@ func (s *Session) connect() error {
 		return err
 	}
 
+	if s.config.TimeZone != "" {
+		s.tz = s.config.TimeZone
+	}
+
 	err = s.Login()
 	if err != nil {
 		return err
@@ -473,8 +478,10 @@ func (s *Session) Load(fileName string) error {
 
 	s.customSessionID = sd.CustomSessionID
 	s.VIN = sd.VIN
-	s.tz = sd.TimeZone
-	s.SiUnits = sd.SiUnits
+
+	// Always use timezone & units from supplied config rather than saved session
+	s.tz = s.config.TimeZone
+	s.SiUnits = s.config.SiUnits
 
 	s.loc, err = time.LoadLocation(s.tz)
 	if err != nil {
