@@ -69,12 +69,6 @@ func encrypt(s, key string) (string, error) {
 	return base64.StdEncoding.EncodeToString(dst), nil
 }
 
-// MetersToMiles converts Carwings distances (in meters) to miles.
-func MetersToMiles(meters int) int {
-	const MilesPerMeter = 0.000621371
-	return int(float64(meters) * MilesPerMeter)
-}
-
 const (
 	RegionUSA       = "NNA"
 	RegionEurope    = "NE"
@@ -100,7 +94,6 @@ type Session struct {
 	customSessionID string
 	tz              string
 	loc             *time.Location
-	SiUnits         bool
 }
 
 // ClimateStatus contains information about the vehicle's climate
@@ -357,8 +350,7 @@ func Connect(cfg Config) (*Session, error) {
 	var err error
 
 	s := &Session{
-		config:  cfg,
-		SiUnits: cfg.SiUnits,
+		config: cfg,
 	}
 
 	if cfg.SessionFile != "" {
@@ -444,7 +436,6 @@ func (s Session) Save(fileName string) error {
 		CustomSessionID: s.customSessionID,
 		VIN:             s.VIN,
 		TimeZone:        s.tz,
-		SiUnits:         s.SiUnits,
 	}
 
 	data, _ := json.Marshal(sd)
@@ -481,7 +472,6 @@ func (s *Session) Load(fileName string) error {
 
 	// Always use timezone & units from supplied config rather than saved session
 	s.tz = s.config.TimeZone
-	s.SiUnits = s.config.SiUnits
 
 	s.loc, err = time.LoadLocation(s.tz)
 	if err != nil {
@@ -584,6 +574,23 @@ func (s *Session) setCommonParams(params url.Values) url.Values {
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
 	return params
+}
+
+// MetersToUnits converts Carwings distances (in meters) to miles/km as configured
+func (s Session) MetersToUnits(meters int) float64 {
+	const MilesPerMeter = 0.000621371
+	if s.config.SiUnits {
+		return float64(meters) / 1000
+	}
+	return float64(meters) * MilesPerMeter
+}
+
+// UnitsName returns the name of the units
+func (s Session) UnitsName() string {
+	if s.config.SiUnits {
+		return "km"
+	}
+	return "miles"
 }
 
 // UpdateStatus asks the Carwings service to request an update from

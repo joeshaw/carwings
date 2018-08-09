@@ -249,11 +249,8 @@ func runBattery(s *carwings.Session, args []string) error {
 
 	fmt.Printf("Battery status as of %s:\n", bs.Timestamp)
 	fmt.Printf("  Capacity: %d / %d (%d%%)\n", bs.Remaining, bs.Capacity, bs.StateOfCharge)
-	if s.SiUnits {
-		fmt.Printf("  Cruising range: %d km (%d km with AC)\n", int(float64(bs.CruisingRangeACOff)/1000), int(float64(bs.CruisingRangeACOn)/1000))
-	} else {
-		fmt.Printf("  Cruising range: %d mi (%d mi with AC)\n", carwings.MetersToMiles(bs.CruisingRangeACOff), carwings.MetersToMiles(bs.CruisingRangeACOn))
-	}
+	fmt.Printf("  Cruising range: %.1f %s (%.1f %s with AC)\n",
+		s.MetersToUnits(bs.CruisingRangeACOff), s.UnitsName(), s.MetersToUnits(bs.CruisingRangeACOn), s.UnitsName())
 	fmt.Printf("  Plug-in state: %s\n", bs.PluginState)
 	fmt.Printf("  Charging status: %s\n", bs.ChargingStatus)
 	fmt.Printf("  Time to full:\n")
