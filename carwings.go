@@ -510,6 +510,14 @@ func (s *Session) Load(fileName string) error {
 	return nil
 }
 
+type sessionVehicleInfo struct {
+	VIN               string `json:"vin"`
+	Nickname          string `json:"nickname,omitempty"`
+	Charger20066      string `json:"charger20066,omitempty"`
+	TelematicsEnabled string `json:"telematicsEnabled,omitempty"`
+	CustomSessionID   string `json:"custom_sessionid"`
+}
+
 func (s *Session) Login() error {
 	params := url.Values{}
 	params.Set("initial_app_strings", initialAppStrings)
@@ -522,13 +530,10 @@ func (s *Session) Login() error {
 	var loginResp struct {
 		baseResponse
 
-		VehicleInfo []struct {
-			VIN               string `json:"vin"`
-			Nickname          string `json:"nickname,omitempty"`
-			Charger20066      string `json:"charger20066,omitempty"`
-			TelematicsEnabled string `json:"telematicsEnabled,omitempty"`
-			CustomSessionID   string `json:"custom_sessionid"`
-		} `json:"vehicleInfo"`
+		GenOneVI []sessionVehicleInfo `json:"vehicleInfo,omitempty"`
+		GenTwoVI []struct {
+			VI []sessionVehicleInfo `json:"vehicleInfo,omitempty"`
+		} `json:"vehicleInfoList,omitempty"`
 
 		CustomerInfo struct {
 			Timezone                    string
@@ -560,7 +565,12 @@ func (s *Session) Login() error {
 		return err
 	}
 
-	vi := loginResp.VehicleInfo[0]
+	var vi sessionVehicleInfo
+	if len(loginResp.GenOneVI) > 0 {
+		vi = loginResp.GenOneVI[0]
+	} else {
+		vi = loginResp.GenTwoVI[0].VI[0]
+	}
 
 	s.customSessionID = vi.CustomSessionID
 	s.VIN = vi.VIN
