@@ -272,14 +272,19 @@ func runClimateStatus(s *carwings.Session, args []string) error {
 		running = "yes"
 	}
 
-	fmt.Printf("Climate control status:\n")
+	fmt.Printf("Climate status:\n")
 	fmt.Printf("  Running: %s\n", running)
+	if cs.Running {
+		fmt.Printf("  Will stop at: %s\n", cs.ACStopTime)
+	}
 	if cs.PluginState != "" {
 		fmt.Printf("  Plug-in state: %s\n", cs.PluginState)
 	}
 	if cs.Temperature != 0 {
 		fmt.Printf("  Temperature setting: %d %s\n", cs.Temperature, cs.TemperatureUnit)
 	}
+	fmt.Printf("  Cruising range: %.1f %s (%.1f %s with AC)\n",
+		s.MetersToUnits(cs.CruisingRangeACOff), s.UnitsName(), s.MetersToUnits(cs.CruisingRangeACOn), s.UnitsName())
 	fmt.Println()
 
 	return nil

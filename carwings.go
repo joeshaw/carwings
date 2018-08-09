@@ -99,6 +99,9 @@ type Session struct {
 // ClimateStatus contains information about the vehicle's climate
 // control (AC or heater) status.
 type ClimateStatus struct {
+	// Date and time this status was retrieved from the vehicle.
+	LastOperationTime time.Time
+
 	// The current climate control operation status.
 	Running bool
 
@@ -118,6 +121,17 @@ type ClimateStatus struct {
 
 	// The climate preset temperature value
 	Temperature int
+
+	// Time the AC was stopped, or is scheduled to stop
+	ACStopTime time.Time
+
+	// Estimated cruising range with climate control on, in
+	// meters.
+	CruisingRangeACOn int
+
+	// Estimated cruising range with climate control off, in
+	// meters.
+	CruisingRangeACOff int
 }
 
 // BatteryStatus contains information about the vehicle's state of
@@ -754,6 +768,8 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 		RemoteACOperation      string
 		ACStartStopDateAndTime cwTime
 		ACStartStopURL         string
+		CruisingRangeAcOn      json.Number `json:",string"`
+		CruisingRangeAcOff     json.Number `json:",string"`
 		PluginState            string
 		ACDurationBatterySec   int `json:",string"`
 		ACDurationPluggedSec   int `json:",string"`
@@ -781,13 +797,30 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 		return ClimateStatus{}, err
 	}
 
+	acOn, _ := racr.CruisingRangeAcOn.Float64()
+	acOff, _ := racr.CruisingRangeAcOff.Float64()
+
+	running := racr.RemoteACOperation == "START"
+	acStopTime := time.Time(racr.ACStartStopDateAndTime).In(s.loc)
+	if running {
+		if NotConnected == PluginState(racr.PluginState) {
+			acStopTime = acStopTime.Add(time.Second * time.Duration(racr.ACDurationBatterySec))
+		} else {
+			acStopTime = acStopTime.Add(time.Second * time.Duration(racr.ACDurationPluggedSec))
+		}
+	}
+
 	cs := ClimateStatus{
-		Running:         racr.RemoteACOperation == "START",
-		PluginState:     PluginState(racr.PluginState),
-		BatteryDuration: racr.ACDurationBatterySec,
-		PluggedDuration: racr.ACDurationPluggedSec,
-		TemperatureUnit: racr.PreAC_unit,
-		Temperature:     racr.PreAC_temp,
+		LastOperationTime:  time.Time(racr.OperationDateAndTime.FixLocation(s.loc)),
+		Running:            running,
+		PluginState:        PluginState(racr.PluginState),
+		BatteryDuration:    racr.ACDurationBatterySec,
+		PluggedDuration:    racr.ACDurationPluggedSec,
+		TemperatureUnit:    racr.PreAC_unit,
+		Temperature:        racr.PreAC_temp,
+		ACStopTime:         acStopTime,
+		CruisingRangeACOn:  int(acOn),
+		CruisingRangeACOff: int(acOff),
 	}
 
 	return cs, nil
