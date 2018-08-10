@@ -199,6 +199,11 @@ type VehicleLocation struct {
 	Longitude string
 }
 
+// ScheduledClimate is a future climate control on
+type ScheduledClimate struct {
+	ExecuteTime time.Time
+}
+
 // PluginState indicates whether and how the vehicle is plugged in.
 // It is separate from ChargingStatus, because the vehicle can be
 // plugged in but not actively charging.
@@ -283,10 +288,14 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		t, err = time.Parse(`"2006-01-02 15:04:05"`, string(data))
 		if err != nil {
-			// Also e.g. "UserVehicleBoundTime": "2018-08-04T15:08:33Z"
+			// Also e.g. "UserVehicleBoundTime": "2018-08-04T15:08:33Z" in Login response
 			t, err = time.Parse(`"2006-01-02T15:04:05Z"`, string(data))
 			if err != nil {
-				return fmt.Errorf("cannot parse %q as carwings time", string(data))
+				// Also e.g. "LastScheduledTime": "2018-08-04T15:08:33Z" in ClimateControlSchedule response
+				t, err = time.Parse(`"Jan _2, 2006 03:04 PM"`, string(data))
+				if err != nil {
+					return fmt.Errorf("cannot parse %q as carwings time", string(data))
+				}
 			}
 		}
 	}
@@ -990,4 +999,89 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 		Latitude:  resp.Lat,
 		Longitude: resp.Lng,
 	}, nil
+}
+
+// ScheduleClimateControl schedules climate control for some future time
+// I believe this time is specified in GMT, despite the "tz" parameter
+func (s *Session) ScheduleClimateControl(scheduleAt time.Time) error {
+	var resp struct {
+		baseResponse
+	}
+
+	params := url.Values{}
+	params.Set("ExecuteTime", scheduleAt.UTC().Format("2006-01-02 15:04:05"))
+
+	if err := s.apiRequest("ACRemoteNewRequest.php", params, &resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateScheduledClimateControl updates scheduled climate control
+// I believe this time is specified in GMT, despite the "tz" parameter
+func (s *Session) UpdateScheduledClimateControl(scheduleAt time.Time) error {
+	var resp struct {
+		baseResponse
+	}
+
+	params := url.Values{}
+	params.Set("ExecuteTime", scheduleAt.UTC().Format("2006-01-02 15:04:05"))
+
+	if err := s.apiRequest("ACRemoteUpdateRequest.php", params, &resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CancelScheduledClimateControl cancels scheduled climate control
+// I believe this time is specified in GMT, despite the "tz" parameter
+func (s *Session) CancelScheduledClimateControl(scheduleAt time.Time) error {
+	var resp struct {
+		baseResponse
+	}
+
+	params := url.Values{}
+	params.Set("ExecuteTime", scheduleAt.UTC().Format("2006-01-02 15:04:05"))
+
+	if err := s.apiRequest("ACRemoteCancelRequest.php", params, &resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CancelScheduledClimateControl cancels scheduled climate control
+// I believe this time is specified in GMT, despite the "tz" parameter
+func (s *Session) GetClimateControlSchedule() (ScheduledClimate, error) {
+	/*
+		{
+			"status":200,
+			"message":"success",
+			"LastScheduledTime":"Feb  9, 2016 05:39 PM",
+			"ExecuteTime":"2016-02-10 01:00:00",
+			"DisplayExecuteTime":"Feb  9, 2016 08:00 PM",
+			"TargetDate":"2016\/02\/10 01:00"
+		}
+	*/
+
+	var resp struct {
+		baseResponse
+		Message            string `json:"message"`
+		LastScheduledTime  cwTime
+		ExecuteTime        cwTime
+		DisplayExecuteTime cwTime
+		TargetDate         cwTime
+	}
+
+	ac := ScheduledClimate{}
+
+	if err := s.apiRequest("GetScheduledACRemoteRequest.php", nil, &resp); err != nil {
+		return ac, err
+	}
+
+	ac.ExecuteTime = time.Time(resp.ExecuteTime).In(s.loc)
+
+	return ac, nil
 }
