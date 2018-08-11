@@ -540,7 +540,7 @@ func (s *Session) Login() error {
 		baseResponse
 
 		GenOneVI []sessionVehicleInfo `json:"vehicleInfo,omitempty"`
-		GenTwoVI []struct {
+		GenTwoVI struct {
 			VI []sessionVehicleInfo `json:"vehicleInfo,omitempty"`
 		} `json:"vehicleInfoList,omitempty"`
 
@@ -578,7 +578,7 @@ func (s *Session) Login() error {
 	if len(loginResp.GenOneVI) > 0 {
 		vi = loginResp.GenOneVI[0]
 	} else {
-		vi = loginResp.GenTwoVI[0].VI[0]
+		vi = loginResp.GenTwoVI.VI[0]
 	}
 
 	s.customSessionID = vi.CustomSessionID
