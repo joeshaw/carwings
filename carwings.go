@@ -276,21 +276,41 @@ func (cwt *cwTime) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// Carwings uses three different date formats 🙄🙄🙄
+	// Carwings uses at least five different date formats! 🙄🙄🙄
 	t, err := time.Parse(`"2006\/01\/02 15:04"`, string(data))
-	if err != nil {
-		t, err = time.Parse(`"2006-01-02 15:04:05"`, string(data))
-		if err != nil {
-			// Also e.g. "UserVehicleBoundTime": "2018-08-04T15:08:33Z"
-			t, err = time.Parse(`"2006-01-02T15:04:05Z"`, string(data))
-			if err != nil {
-				return fmt.Errorf("cannot parse %q as carwings time", string(data))
-			}
-		}
+	if err == nil {
+		*cwt = cwTime(t)
+		return nil
 	}
 
-	*cwt = cwTime(t)
-	return nil
+	t, err = time.Parse(`"2006-01-02 15:04:05"`, string(data))
+	if err == nil {
+		*cwt = cwTime(t)
+		return nil
+	}
+
+	// Also e.g. "UserVehicleBoundTime": "2018-08-04T15:08:33Z"
+	t, err = time.Parse(`"2006-01-02T15:04:05Z"`, string(data))
+	if err == nil {
+		*cwt = cwTime(t)
+		return nil
+	}
+
+	// Also e.g. "GpsDatetime": "2018-08-05T10:18:47" in monthly statistics response
+	t, err = time.Parse(`"2006-01-02T15:04:05"`, string(data))
+	if err == nil {
+		*cwt = cwTime(t)
+		return nil
+	}
+
+	// Also e.g. "LastScheduledTime": "2018-08-04T15:08:33Z" in ClimateControlSchedule response
+	t, err = time.Parse(`"Jan _2, 2006 03:04 PM"`, string(data))
+	if err == nil {
+		*cwt = cwTime(t)
+		return nil
+	}
+
+	return fmt.Errorf("cannot parse %q as carwings time", string(data))
 }
 
 // FixLocation alters the location associated with the time, without changing
@@ -876,11 +896,178 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 	}, nil
 }
 
+type TripDetail struct {
+	//              "PriceSimulatorDetailInfoTrip": [
+	//                {
+	//                  "TripId": "1",
+	//                  "PowerConsumptTotal": "2461.12",
+	//                  "PowerConsumptMoter": "3812.22",
+	//                  "PowerConsumptMinus": "1351.1",
+	//                  "TravelDistance": "17841",
+	//                  "ElectricMileage": "13.8",
+	//                  "CO2Reduction": "3",
+	//                  "MapDisplayFlg": "NONACTIVE",
+	//                  "GpsDatetime": "2018-08-05T10:18:47"
+	//                },
+	TripId             int       `json:",string"`
+	PowerConsumedTotal float64   `json:"PowerConsumptTotal,string"`
+	PowerConsumedMotor float64   `json:"PowerConsumptMoter,string"`
+	PowerRegenerated   float64   `json:"PowerConsumptMinus,string"`
+	Meters             int       `json:"TravelDistance,string"`
+	Efficiency         float64   `json:"ElectricMileage,string"`
+	CO2Reduction       int       `json:",string"`
+	MapDisplayFlag     string    `json:"MapDisplayFlg"`
+	GPSDateTime        cwTime    `json:"GpsDatetime"`
+	Started            time.Time `json:",omitempty"`
+}
+
+type DateDetail struct {
+	//      "PriceSimulatorDetailInfoDateList": {
+	//        "PriceSimulatorDetailInfoDate": [
+	//          {
+	//            "TargetDate": "2018-08-05",
+	//            "PriceSimulatorDetailInfoTripList": {
+	//              "PriceSimulatorDetailInfoTrip": [
+	TargetDate string
+	// DisplayDate string
+	Trips []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
+}
+
+type MonthlyTotals struct {
+	Trips              int     `json:"TotalNumberOfTrips,string"`
+	PowerConsumed      float64 `json:"TotalPowerConsumptTotal,string"`
+	PowerConsumedMotor float64 `json:"TotalPowerConsumptMoter,string"`
+	PowerRegenerated   float64 `json:"TotalPowerConsumptMinus,string"`
+	MetersTravelled    int     `json:"TotalTravelDistance,string"`
+	Efficiency         float64 `json:"TotalElectricMileage,string"`
+	CO2Reduction       int     `json:"TotalCO2Reductiont,string"`
+}
+
+type MonthlyStatistics struct {
+	EfficiencyScale string
+	ElectricityRate float64
+	ElectricityBill float64
+	Dates           []DateDetail
+	Total           MonthlyTotals
+}
+
+func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, error) {
+	//  {
+	//    "status": 200,
+	//    "PriceSimulatorDetailInfoResponsePersonalData": {
+	//      "TargetMonth": "201808",
+	//      "TotalPowerConsumptTotal": "55.88882",
+	//      "TotalPowerConsumptMoter": "71.44184",
+	//      "TotalPowerConsumptMinus": "15.55302",
+	//      "ElectricPrice": "0.15",
+	//      "ElectricBill": "8.3833230",
+	//      "ElectricCostScale": "kWh/100km",
+	//      "MainRateFlg": "COUNTRY",
+	//      "ExistFlg": "EXIST",
+	//      "PriceSimulatorDetailInfoDateList": {
+	//        "PriceSimulatorDetailInfoDate": [
+	//          {
+	//            "TargetDate": "2018-08-05",
+	//            "PriceSimulatorDetailInfoTripList": {
+	//              "PriceSimulatorDetailInfoTrip": [
+	//                {
+	//                  "TripId": "1",
+	//                  "PowerConsumptTotal": "2461.12",
+	//                  "PowerConsumptMoter": "3812.22",
+	//                  "PowerConsumptMinus": "1351.1",
+	//                  "TravelDistance": "17841",
+	//                  "ElectricMileage": "13.8",
+	//                  "CO2Reduction": "3",
+	//                  "MapDisplayFlg": "NONACTIVE",
+	//                  "GpsDatetime": "2018-08-05T10:18:47"
+	//                },
+	//                { ... repeats for each trip ... }
+	//              ]
+	//            },
+	//            "DisplayDate": "Aug 05"
+	//          },
+	//          { ... repeats for each day ... }
+	//        ]
+	//      },
+	//      "PriceSimulatorTotalInfo": {
+	//        "TotalNumberOfTrips": "23",
+	//        "TotalPowerConsumptTotal": "55.88882",
+	//        "TotalPowerConsumptMoter": "71.44184",
+	//        "TotalPowerConsumptMinus": "15.55302",
+	//        "TotalTravelDistance": "416252",
+	//        "TotalElectricMileage": "0.0134",
+	//        "TotalCO2Reductiont": "72"
+	//      },
+	//      "DisplayMonth": "Aug/2018"
+	//    }
+	//  }
+
+	var resp struct {
+		baseResponse
+		Data struct {
+			TargetMonth string
+			// TotalPowerConsumptTotal
+			// TotalPowerConsumptMoter
+			// TotalPowerConsumptMinus
+			ElectricPrice     float64 `json:",string"`
+			ElectricBill      float64 `json:",string"`
+			ElectricCostScale string
+			// MainRateFlg
+			// ExistFlg
+			Detail struct {
+				List []struct {
+					//      "PriceSimulatorDetailInfoDateList": {
+					//        "PriceSimulatorDetailInfoDate": [
+					//          {
+					//            "TargetDate": "2018-08-05",
+					//            "PriceSimulatorDetailInfoTripList": {
+					//              "PriceSimulatorDetailInfoTrip": [
+					TargetDate string
+					// DisplayDate string
+					Trips struct {
+						List []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
+					} `json:"PriceSimulatorDetailInfoTripList"`
+				} `json:"PriceSimulatorDetailInfoDate"`
+			} `json:"PriceSimulatorDetailInfoDateList"`
+			Total MonthlyTotals `json:"PriceSimulatorTotalInfo"`
+		} `json:"PriceSimulatorDetailInfoResponsePersonalData"`
+		// DisplayMonth string
+	}
+
+	ms := MonthlyStatistics{}
+	params := url.Values{}
+	params.Set("TargetMonth", month.In(s.loc).Format("200601"))
+
+	if err := s.apiRequest("PriceSimulatorDetailInfoRequest.php", params, &resp); err != nil {
+		return ms, err
+	}
+
+	ms.EfficiencyScale = resp.Data.ElectricCostScale
+	ms.ElectricityRate = resp.Data.ElectricPrice
+	ms.ElectricityBill = resp.Data.ElectricBill
+	ms.Total = resp.Data.Total
+	ms.Dates = make([]DateDetail, 0, 31)
+	for i := 0; i < len(resp.Data.Detail.List); i++ {
+		trips := make([]TripDetail, 0, 10)
+		for j := 0; j < len(resp.Data.Detail.List[i].Trips.List); j++ {
+			trip := resp.Data.Detail.List[i].Trips.List[j]
+			trip.Started = time.Time(trip.GPSDateTime)
+			trips = append(trips, trip)
+		}
+		ms.Dates = append(ms.Dates, DateDetail{
+			TargetDate: resp.Data.Detail.List[i].TargetDate,
+			Trips:      trips,
+		})
+	}
+
+	return ms, nil
+}
+
 type DailyStatistics struct {
 	TargetDate             time.Time
-	ElectricCostScale      string
-	ElectricMileage        float64 `json:",string"`
-	ElectricMileageLevel   int     `json:",string"`
+	EfficiencyScale        string
+	Efficiency             float64 `json:",string"`
+	EfficiencyLevel        int     `json:",string"`
 	PowerConsumeMotor      float64 `json:",string"`
 	PowerConsumeMotorLevel int     `json:",string"`
 	PowerRegeneration      float64 `json:",string"`
@@ -947,9 +1134,9 @@ func (s *Session) GetDailyStatistics(day time.Time) (DailyStatistics, error) {
 	}
 
 	ds.TargetDate, _ = time.ParseInLocation("2006-01-02", resp.D.DS.TargetDate, s.loc)
-	ds.ElectricCostScale = resp.D.ElectricCostScale
-	ds.ElectricMileage = resp.D.DS.ElectricMileage
-	ds.ElectricMileageLevel = resp.D.DS.ElectricMileageLevel
+	ds.EfficiencyScale = resp.D.ElectricCostScale
+	ds.Efficiency = resp.D.DS.ElectricMileage
+	ds.EfficiencyLevel = resp.D.DS.ElectricMileageLevel
 	ds.PowerConsumeMotor = resp.D.DS.PowerConsumptMoter
 	ds.PowerConsumeMotorLevel = resp.D.DS.PowerConsumptMoterLevel
 	ds.PowerRegeneration = resp.D.DS.PowerConsumptMinus
