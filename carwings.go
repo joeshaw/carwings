@@ -875,3 +875,87 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 		Longitude: resp.Lng,
 	}, nil
 }
+
+type DailyStatistics struct {
+	TargetDate             time.Time
+	ElectricCostScale      string
+	ElectricMileage        float64 `json:",string"`
+	ElectricMileageLevel   int     `json:",string"`
+	PowerConsumeMotor      float64 `json:",string"`
+	PowerConsumeMotorLevel int     `json:",string"`
+	PowerRegeneration      float64 `json:",string"`
+	PowerRegenerationLevel int     `json:",string"`
+	PowerConsumeAUX        float64 `json:",string"`
+	PowerConsumeAUXLevel   int     `json:",string"`
+}
+
+func (s *Session) GetDailyStatistics(day time.Time) (DailyStatistics, error) {
+	//  {
+	//    "status": 200,
+	//    "DriveAnalysisBasicScreenResponsePersonalData": {
+	//      "DateSummary": {
+	//        "TargetDate": "2018-08-12",
+	//        "ElectricMileage": "11.9",
+	//        "ElectricMileageLevel": "5",
+	//        "PowerConsumptMoter": "140.5",
+	//        "PowerConsumptMoterLevel": "5",
+	//        "PowerConsumptMinus": "29.3",
+	//        "PowerConsumptMinusLevel": "2",
+	//        "PowerConsumptAUX": "7.4",
+	//        "PowerConsumptAUXLevel": "5",
+	//        "DisplayDate": "Aug 12, 18"
+	//      },
+	//      "ElectricCostScale": "kWh/100km"
+	//    },
+	//    "AdviceList": {
+	//      "Advice": {
+	//        "title": "Drive Tip:",
+	//        "body": "Use remote climate control or timer so that the cabin will be at a comfortable temperature before starting.  This allows the car to save energy whilst being driven."
+	//      }
+	//    }
+	//  }
+
+	var resp struct {
+		baseResponse
+		D struct {
+			DS struct {
+				TargetDate              string
+				ElectricMileage         float64 `json:",string"`
+				ElectricMileageLevel    int     `json:",string"`
+				PowerConsumptMoter      float64 `json:",string"`
+				PowerConsumptMoterLevel int     `json:",string"`
+				PowerConsumptMinus      float64 `json:",string"`
+				PowerConsumptMinusLevel int     `json:",string"`
+				PowerConsumptAUX        float64 `json:",string"`
+				PowerConsumptAUXLevel   int     `json:",string"`
+			} `json:"DateSummary"`
+			ElectricCostScale string
+		} `json:"DriveAnalysisBasicScreenResponsePersonalData"`
+	}
+
+	ds := DailyStatistics{}
+
+	params := url.Values{}
+	params.Set("TargetDate", day.In(s.loc).Add(time.Hour*-72).Format("2006-01-02"))
+
+	if err := s.apiRequest("DriveAnalysisBasicScreenRequestEx.php", params, &resp); err != nil {
+		return ds, err
+	}
+
+	if resp.D.DS.TargetDate == "" {
+		return ds, errors.New("daily driving statistics not available")
+	}
+
+	ds.TargetDate, _ = time.ParseInLocation("2006-01-02", resp.D.DS.TargetDate, s.loc)
+	ds.ElectricCostScale = resp.D.ElectricCostScale
+	ds.ElectricMileage = resp.D.DS.ElectricMileage
+	ds.ElectricMileageLevel = resp.D.DS.ElectricMileageLevel
+	ds.PowerConsumeMotor = resp.D.DS.PowerConsumptMoter
+	ds.PowerConsumeMotorLevel = resp.D.DS.PowerConsumptMoterLevel
+	ds.PowerRegeneration = resp.D.DS.PowerConsumptMinus
+	ds.PowerRegenerationLevel = resp.D.DS.PowerConsumptMinusLevel
+	ds.PowerConsumeAUX = resp.D.DS.PowerConsumptAUX
+	ds.PowerConsumeAUXLevel = resp.D.DS.PowerConsumptAUXLevel
+
+	return ds, nil
+}
