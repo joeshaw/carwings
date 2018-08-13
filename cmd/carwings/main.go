@@ -370,22 +370,22 @@ func runMonthly(s *carwings.Session, args []string) error {
 		return err
 	}
 
-	efficiency := (ms.Total.PowerConsumed / s.MetersToUnits(ms.Total.MetersTravelled)) / 10
-
 	fmt.Println("Monthly Driving Statistics for ", time.Now().Local().Format("January 2006"))
-	fmt.Printf("  Driving efficiency: %.1f %s over %.1f %s in %d trips\n",
-		efficiency, ms.EfficiencyScale, s.MetersToUnits(ms.Total.MetersTravelled), s.UnitsName(), ms.Total.Trips)
-	fmt.Println(ms.Total)
+	fmt.Printf("  Driving efficiency: %.4f %s over %.1f %s in %d trips\n",
+		ms.Total.Efficiency*1000, ms.EfficiencyScale, s.MetersToUnits(ms.Total.MetersTravelled), s.UnitsName(), ms.Total.Trips)
+	fmt.Printf("  Driving cost: %.4f at a rate of %.4f/kWh for %.1fkWh => %.4f/%s\n",
+		ms.ElectricityBill, ms.ElectricityRate, ms.Total.PowerConsumed, ms.ElectricityBill/s.MetersToUnits(ms.Total.MetersTravelled), s.UnitsName())
+	fmt.Println("")
 
 	for i := 0; i < len(ms.Dates); i++ {
 		date := ms.Dates[i]
 		var distance int
 		var power float64
 		for j := 0; j < len(date.Trips); j++ {
-			if j == 0 {
-				fmt.Printf("  Trips on %s\n", date.TargetDate)
-			}
 			t := date.Trips[j]
+			if j == 0 {
+				fmt.Printf("  Trips on %s\n", t.Started.Local().Format("2006-01-02 Monday"))
+			}
 			distance += t.Meters
 			power += t.PowerConsumedTotal
 
@@ -394,7 +394,7 @@ func runMonthly(s *carwings.Session, args []string) error {
 		}
 		if distance > 0 {
 			fmt.Println("          =======  =======")
-			efficiency = (power / s.MetersToUnits(distance)) / 10
+			efficiency := (power / s.MetersToUnits(distance)) / 10
 			fmt.Printf("          %5.1f%s %5.1f %-10.10s\n\n",
 				s.MetersToUnits(distance), s.UnitsName(), efficiency, ms.EfficiencyScale)
 		}
@@ -415,12 +415,11 @@ func runDaily(s *carwings.Session, args []string) error {
 	fmt.Printf("  Driving efficiency: %5.1f %-10.10s %-5.5s\n",
 		ds.Efficiency, ds.EfficiencyScale, strings.Repeat("*", ds.EfficiencyLevel))
 	fmt.Printf("  Acceleration:     %7.1f %-10.10s %-5.5s\n",
-		ds.PowerConsumeMotor, "kWh", strings.Repeat("*", ds.PowerConsumeMotorLevel))
+		ds.PowerConsumedMotor, "kWh", strings.Repeat("*", ds.PowerConsumedMotorLevel))
 	fmt.Printf("  Regeneration:     %7.1f %-10.10s %-5.5s\n",
 		ds.PowerRegeneration, "kWh", strings.Repeat("*", ds.PowerRegenerationLevel))
 	fmt.Printf("  Auxilliary usage: %7.1f %-10.10s %-5.5s\n",
-		ds.PowerConsumeAUX, "Wh", strings.Repeat("*", ds.PowerConsumeAUXLevel))
-	fmt.Println(ds)
+		ds.PowerConsumedAUX, "Wh", strings.Repeat("*", ds.PowerConsumedAUXLevel))
 
 	return nil
 }
