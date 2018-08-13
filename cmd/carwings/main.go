@@ -27,6 +27,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 	fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
+	fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 	fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
 	fmt.Fprintf(os.Stderr, "\n")
 }
@@ -114,6 +115,9 @@ func main() {
 
 	case "server":
 		run = runServer
+
+	case "daily":
+		run = runDaily
 
 	default:
 		usage()
@@ -349,6 +353,28 @@ func runLocate(s *carwings.Session, args []string) error {
 	fmt.Printf("  Longitude: %s\n", vl.Longitude)
 	fmt.Printf("  Link: https://www.google.com/maps/place/%s,%s\n", vl.Latitude, vl.Longitude)
 	fmt.Println()
+
+	return nil
+}
+
+func runDaily(s *carwings.Session, args []string) error {
+	fmt.Println("Sending daily statistics request...")
+
+	ds, err := s.GetDailyStatistics(time.Now().Local())
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Daily Driving Statistics for ", ds.TargetDate.Format("2006-01-02"))
+	fmt.Printf("  Driving efficiency: %5.1f %-10.10s %-5.5s\n",
+		ds.ElectricMileage, ds.ElectricCostScale, strings.Repeat("*", ds.ElectricMileageLevel))
+	fmt.Printf("  Acceleration:     %7.1f %-10.10s %-5.5s\n",
+		ds.PowerConsumeMotor, "kWh", strings.Repeat("*", ds.PowerConsumeMotorLevel))
+	fmt.Printf("  Regeneration:     %7.1f %-10.10s %-5.5s\n",
+		ds.PowerRegeneration, "kWh", strings.Repeat("*", ds.PowerRegenerationLevel))
+	fmt.Printf("  Auxilliary usage: %7.1f %-10.10s %-5.5s\n",
+		ds.PowerConsumeAUX, "Wh", strings.Repeat("*", ds.PowerConsumeAUXLevel))
+	fmt.Println(ds)
 
 	return nil
 }
