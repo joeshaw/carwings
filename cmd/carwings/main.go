@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func usage() {
@@ -27,6 +28,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 	fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
+	fmt.Fprintf(os.Stderr, "  monthly           Monthly driving statistics\n")
 	fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 	fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
 	fmt.Fprintf(os.Stderr, "\n")
@@ -115,6 +117,9 @@ func main() {
 
 	case "server":
 		run = runServer
+
+	case "monthly":
+		run = runMonthly
 
 	case "daily":
 		run = runDaily
@@ -357,6 +362,47 @@ func runLocate(s *carwings.Session, args []string) error {
 	return nil
 }
 
+func runMonthly(s *carwings.Session, args []string) error {
+	fmt.Println("Sending monthly statistics request...")
+
+	ms, err := s.GetMonthlyStatistics(time.Now().Local())
+	if err != nil {
+		return err
+	}
+
+	efficiency := (ms.Total.PowerConsumed / s.MetersToUnits(ms.Total.MetersTravelled)) / 10
+
+	fmt.Println("Monthly Driving Statistics for ", time.Now().Local().Format("January 2006"))
+	fmt.Printf("  Driving efficiency: %.1f %s over %.1f %s in %d trips\n",
+		efficiency, ms.EfficiencyScale, s.MetersToUnits(ms.Total.MetersTravelled), s.UnitsName(), ms.Total.Trips)
+	fmt.Println(ms.Total)
+
+	for i := 0; i < len(ms.Dates); i++ {
+		date := ms.Dates[i]
+		var distance int
+		var power float64
+		for j := 0; j < len(date.Trips); j++ {
+			if j == 0 {
+				fmt.Printf("  Trips on %s\n", date.TargetDate)
+			}
+			t := date.Trips[j]
+			distance += t.Meters
+			power += t.PowerConsumedTotal
+
+			fmt.Printf("    %5s %5.1f%s %5.1f %-10.10s\n", t.Started.Local().Format("15:04"),
+				s.MetersToUnits(t.Meters), s.UnitsName(), t.Efficiency, ms.EfficiencyScale)
+		}
+		if distance > 0 {
+			fmt.Println("          =======  =======")
+			efficiency = (power / s.MetersToUnits(distance)) / 10
+			fmt.Printf("          %5.1f%s %5.1f %-10.10s\n\n",
+				s.MetersToUnits(distance), s.UnitsName(), efficiency, ms.EfficiencyScale)
+		}
+	}
+
+	return nil
+}
+
 func runDaily(s *carwings.Session, args []string) error {
 	fmt.Println("Sending daily statistics request...")
 
@@ -367,7 +413,7 @@ func runDaily(s *carwings.Session, args []string) error {
 
 	fmt.Println("Daily Driving Statistics for ", ds.TargetDate.Format("2006-01-02"))
 	fmt.Printf("  Driving efficiency: %5.1f %-10.10s %-5.5s\n",
-		ds.ElectricMileage, ds.ElectricCostScale, strings.Repeat("*", ds.ElectricMileageLevel))
+		ds.Efficiency, ds.EfficiencyScale, strings.Repeat("*", ds.EfficiencyLevel))
 	fmt.Printf("  Acceleration:     %7.1f %-10.10s %-5.5s\n",
 		ds.PowerConsumeMotor, "kWh", strings.Repeat("*", ds.PowerConsumeMotorLevel))
 	fmt.Printf("  Regeneration:     %7.1f %-10.10s %-5.5s\n",
