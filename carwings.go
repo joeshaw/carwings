@@ -896,6 +896,8 @@ func (s *Session) LocateVehicle() (VehicleLocation, error) {
 	}, nil
 }
 
+// TripDetail holds the details of each trip.  All of the parsed detail is
+// used in both the response and the MonthlyStatistics.
 type TripDetail struct {
 	//              "PriceSimulatorDetailInfoTrip": [
 	//                {
@@ -921,18 +923,13 @@ type TripDetail struct {
 	Started            time.Time `json:",omitempty"`
 }
 
+// DateDetail is the detail for a single date
 type DateDetail struct {
-	//      "PriceSimulatorDetailInfoDateList": {
-	//        "PriceSimulatorDetailInfoDate": [
-	//          {
-	//            "TargetDate": "2018-08-05",
-	//            "PriceSimulatorDetailInfoTripList": {
-	//              "PriceSimulatorDetailInfoTrip": [
 	TargetDate string
-	// DisplayDate string
-	Trips []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
+	Trips      []TripDetail
 }
 
+// MonthlyTotals holds the various totals of things for the whole month
 type MonthlyTotals struct {
 	Trips              int     `json:"TotalNumberOfTrips,string"`
 	PowerConsumed      float64 `json:"TotalPowerConsumptTotal,string"`
@@ -943,6 +940,9 @@ type MonthlyTotals struct {
 	CO2Reduction       int     `json:"TotalCO2Reductiont,string"`
 }
 
+// MonthlyStatistics is the structure returned which includes
+// all of the trips and all of the totals as well as the electricity rate
+// informtion that has been supplied to CarWings.
 type MonthlyStatistics struct {
 	EfficiencyScale string
 	ElectricityRate float64
@@ -951,6 +951,7 @@ type MonthlyStatistics struct {
 	Total           MonthlyTotals
 }
 
+// GetMonthlyStatistics gets the statistics for a particular month
 func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, error) {
 	//  {
 	//    "status": 200,
@@ -1006,14 +1007,16 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 		baseResponse
 		Data struct {
 			TargetMonth string
-			// TotalPowerConsumptTotal
-			// TotalPowerConsumptMoter
-			// TotalPowerConsumptMinus
+			// The following three fields are ignored because they also appear in the totals
+			// - TotalPowerConsumptTotal
+			// - TotalPowerConsumptMoter
+			// - TotalPowerConsumptMinus
 			ElectricPrice     float64 `json:",string"`
 			ElectricBill      float64 `json:",string"`
 			ElectricCostScale string
-			// MainRateFlg
-			// ExistFlg
+			// The following two fields are ignored because their meaning is unclear
+			// - MainRateFlg
+			// - ExistFlg
 			Detail struct {
 				List []struct {
 					//      "PriceSimulatorDetailInfoDateList": {
@@ -1023,7 +1026,7 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 					//            "PriceSimulatorDetailInfoTripList": {
 					//              "PriceSimulatorDetailInfoTrip": [
 					TargetDate string
-					// DisplayDate string
+					// DisplayDate string  // ignored
 					Trips struct {
 						List []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
 					} `json:"PriceSimulatorDetailInfoTripList"`
@@ -1031,7 +1034,7 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 			} `json:"PriceSimulatorDetailInfoDateList"`
 			Total MonthlyTotals `json:"PriceSimulatorTotalInfo"`
 		} `json:"PriceSimulatorDetailInfoResponsePersonalData"`
-		// DisplayMonth string
+		// DisplayMonth string  // ignored
 	}
 
 	ms := MonthlyStatistics{}
@@ -1063,19 +1066,21 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 	return ms, nil
 }
 
+// DailyStatistics holds the statistics for a day
 type DailyStatistics struct {
-	TargetDate             time.Time
-	EfficiencyScale        string
-	Efficiency             float64 `json:",string"`
-	EfficiencyLevel        int     `json:",string"`
-	PowerConsumeMotor      float64 `json:",string"`
-	PowerConsumeMotorLevel int     `json:",string"`
-	PowerRegeneration      float64 `json:",string"`
-	PowerRegenerationLevel int     `json:",string"`
-	PowerConsumeAUX        float64 `json:",string"`
-	PowerConsumeAUXLevel   int     `json:",string"`
+	TargetDate              time.Time
+	EfficiencyScale         string
+	Efficiency              float64 `json:",string"`
+	EfficiencyLevel         int     `json:",string"`
+	PowerConsumedMotor      float64 `json:",string"`
+	PowerConsumedMotorLevel int     `json:",string"`
+	PowerRegeneration       float64 `json:",string"`
+	PowerRegenerationLevel  int     `json:",string"`
+	PowerConsumedAUX        float64 `json:",string"`
+	PowerConsumedAUXLevel   int     `json:",string"`
 }
 
+// GetDailyStatistics returns the statistics for a specified Date^W^W^Wtoday
 func (s *Session) GetDailyStatistics(day time.Time) (DailyStatistics, error) {
 	//  {
 	//    "status": 200,
@@ -1104,8 +1109,8 @@ func (s *Session) GetDailyStatistics(day time.Time) (DailyStatistics, error) {
 
 	var resp struct {
 		baseResponse
-		D struct {
-			DS struct {
+		Data struct {
+			Stats struct {
 				TargetDate              string
 				ElectricMileage         float64 `json:",string"`
 				ElectricMileageLevel    int     `json:",string"`
@@ -1123,26 +1128,31 @@ func (s *Session) GetDailyStatistics(day time.Time) (DailyStatistics, error) {
 	ds := DailyStatistics{}
 
 	params := url.Values{}
-	params.Set("TargetDate", day.In(s.loc).Add(time.Hour*-72).Format("2006-01-02"))
+	// TODO: There's a bug getting stats for any day other than today: we have guessed the
+	// TODO: name of the `TargetDate` parameter wrong :-(
+	// TODO: It isn't `TargetDate` or `DetailTargetDate`
+	// On the other hand, we can get/calculate all of this (and more) from the daily records in the
+	// MonthlyStatistics response, so maybe it's silly to do it this way?
+	// params.Set("DetailTargetDate", day.In(s.loc).Format("2006-01-02"))
 
 	if err := s.apiRequest("DriveAnalysisBasicScreenRequestEx.php", params, &resp); err != nil {
 		return ds, err
 	}
 
-	if resp.D.DS.TargetDate == "" {
+	if resp.Data.Stats.TargetDate == "" {
 		return ds, errors.New("daily driving statistics not available")
 	}
 
-	ds.TargetDate, _ = time.ParseInLocation("2006-01-02", resp.D.DS.TargetDate, s.loc)
-	ds.EfficiencyScale = resp.D.ElectricCostScale
-	ds.Efficiency = resp.D.DS.ElectricMileage
-	ds.EfficiencyLevel = resp.D.DS.ElectricMileageLevel
-	ds.PowerConsumeMotor = resp.D.DS.PowerConsumptMoter
-	ds.PowerConsumeMotorLevel = resp.D.DS.PowerConsumptMoterLevel
-	ds.PowerRegeneration = resp.D.DS.PowerConsumptMinus
-	ds.PowerRegenerationLevel = resp.D.DS.PowerConsumptMinusLevel
-	ds.PowerConsumeAUX = resp.D.DS.PowerConsumptAUX
-	ds.PowerConsumeAUXLevel = resp.D.DS.PowerConsumptAUXLevel
+	ds.TargetDate, _ = time.ParseInLocation("2006-01-02", resp.Data.Stats.TargetDate, s.loc)
+	ds.EfficiencyScale = resp.Data.ElectricCostScale
+	ds.Efficiency = resp.Data.Stats.ElectricMileage
+	ds.EfficiencyLevel = resp.Data.Stats.ElectricMileageLevel
+	ds.PowerConsumedMotor = resp.Data.Stats.PowerConsumptMoter
+	ds.PowerConsumedMotorLevel = resp.Data.Stats.PowerConsumptMoterLevel
+	ds.PowerRegeneration = resp.Data.Stats.PowerConsumptMinus
+	ds.PowerRegenerationLevel = resp.Data.Stats.PowerConsumptMinusLevel
+	ds.PowerConsumedAUX = resp.Data.Stats.PowerConsumptAUX
+	ds.PowerConsumedAUXLevel = resp.Data.Stats.PowerConsumptAUXLevel
 
 	return ds, nil
 }
