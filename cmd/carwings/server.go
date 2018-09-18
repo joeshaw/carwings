@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -53,6 +54,40 @@ func runServer(s *carwings.Session, args []string) error {
 	go updateLoop(ctx, s)
 
 	const timeout = 5 * time.Second
+
+	http.HandleFunc("/battery", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			status, err := s.BatteryStatus()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			json.NewEncoder(w).Encode(status)
+
+		default:
+			http.NotFound(w, r)
+			return
+		}
+	})
+
+	http.HandleFunc("/climate", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			status, err := s.ClimateControlStatus()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			json.NewEncoder(w).Encode(status)
+
+		default:
+			http.NotFound(w, r)
+			return
+		}
+	})
 
 	http.HandleFunc("/charging/on", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
