@@ -15,24 +15,26 @@ import (
 	"github.com/peterbourgon/ff"
 )
 
-func usage() {
-	fmt.Fprintf(os.Stderr, "USAGE\n")
-	fmt.Fprintf(os.Stderr, "  %s <mode> [flags]\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "FLAGS\n")
-	flag.VisitAll(func(f *flag.Flag) {
-		fmt.Fprintf(os.Stderr, "  -%s %s\n", f.Name, f.Usage)
-	})
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "COMMANDS\n")
-	fmt.Fprintf(os.Stderr, "  update            Load latest data from vehicle\n")
-	fmt.Fprintf(os.Stderr, "  battery           Get most recently loaded battery status\n")
-	fmt.Fprintf(os.Stderr, "  charge            Begin charging plugged-in vehicle\n")
-	fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
-	fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
-	fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
-	fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
-	fmt.Fprintf(os.Stderr, "\n")
+func usage(fs *flag.FlagSet) func() {
+	return func() {
+		fmt.Fprintf(os.Stderr, "USAGE\n")
+		fmt.Fprintf(os.Stderr, "  %s <mode> [flags]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "FLAGS\n")
+		fs.VisitAll(func(f *flag.Flag) {
+			fmt.Fprintf(os.Stderr, "  -%s %s\n", f.Name, f.Usage)
+		})
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "COMMANDS\n")
+		fmt.Fprintf(os.Stderr, "  update            Load latest data from vehicle\n")
+		fmt.Fprintf(os.Stderr, "  battery           Get most recently loaded battery status\n")
+		fmt.Fprintf(os.Stderr, "  charge            Begin charging plugged-in vehicle\n")
+		fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
+		fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
+		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
+		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
+		fmt.Fprintf(os.Stderr, "\n")
+	}
 }
 
 func main() {
@@ -47,7 +49,7 @@ func main() {
 	fs.StringVar(&region, "region", carwings.RegionUSA, "carwings region")
 	fs.StringVar(&sessionFile, "session-file", "~/.carwings-session", "carwings session file")
 	fs.BoolVar(&carwings.Debug, "debug", false, "debug mode")
-	fs.Usage = usage
+	fs.Usage = usage(fs)
 
 	ff.Parse(fs, os.Args[1:],
 		ff.WithConfigFile(filepath.Join(os.Getenv("HOME"), ".carwings")),
@@ -57,7 +59,7 @@ func main() {
 
 	args := fs.Args()
 	if len(args) < 1 {
-		usage()
+		fs.Usage()
 		os.Exit(1)
 	}
 
@@ -100,7 +102,7 @@ func main() {
 		run = runServer
 
 	default:
-		usage()
+		fs.Usage()
 		os.Exit(1)
 	}
 
