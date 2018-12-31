@@ -530,7 +530,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
 		Capacity:           batrec.BatteryStatus.BatteryCapacity,
 		Remaining:          batrec.BatteryStatus.BatteryRemainingAmount,
-		StateOfCharge:      batrec.BatteryStatus.SOC.Value,
+		StateOfCharge:      soc,
 		CruisingRangeACOn:  int(acOn),
 		CruisingRangeACOff: int(acOff),
 		PluginState:        PluginState(batrec.PluginState),
