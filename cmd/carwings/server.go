@@ -36,7 +36,7 @@ func updateLoop(ctx context.Context, s *carwings.Session) {
 	}
 }
 
-func runServer(s *carwings.Session, args []string) error {
+func runServer(s *carwings.Session, cfg config, args []string) error {
 	var srv http.Server
 
 	ctx, cancel := context.WithCancel(context.Background())
