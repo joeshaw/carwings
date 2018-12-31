@@ -20,11 +20,6 @@ import (
 const (
 	baseURL = "https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/"
 
-	// Result of the call to InitialApp.php, which appears to
-	// always be the same.  It'll probably break at some point but
-	// for now... skip it.
-	blowfishKey = "uyI5Dj9g8VCOFDnBRUbr3g"
-
 	// Extracted from the NissanConnect EV app
 	initialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
 )
