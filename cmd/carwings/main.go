@@ -15,12 +15,6 @@ import (
 	"github.com/peterbourgon/ff"
 )
 
-type config struct {
-	username string
-	password string
-	region   string
-}
-
 func usage() {
 	fmt.Fprintf(os.Stderr, "USAGE\n")
 	fmt.Fprintf(os.Stderr, "  %s <mode> [flags]\n", os.Args[0])
@@ -42,12 +36,16 @@ func usage() {
 }
 
 func main() {
-	var cfg config
+	var (
+		username, password  string
+		region, sessionFile string
+	)
 
 	fs := flag.NewFlagSet("carwings", flag.ExitOnError)
-	fs.StringVar(&cfg.username, "username", "", "carwings username")
-	fs.StringVar(&cfg.password, "password", "", "carwings password")
-	fs.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
+	fs.StringVar(&username, "username", "", "carwings username")
+	fs.StringVar(&password, "password", "", "carwings password")
+	fs.StringVar(&region, "region", carwings.RegionUSA, "carwings region")
+	fs.StringVar(&sessionFile, "session-file", "~/.carwings-session", "carwings session file")
 	fs.BoolVar(&carwings.Debug, "debug", false, "debug mode")
 	fs.Usage = usage
 
@@ -63,12 +61,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.username == "" {
+	if username == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: -username must be provided (it used to be -email)\n")
 		os.Exit(1)
 	}
 
-	if cfg.password == "" {
+	if password == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: -password must be provided\n")
 		os.Exit(1)
 	}
@@ -108,8 +106,12 @@ func main() {
 
 	fmt.Println("Logging into Carwings...")
 
-	s, err := carwings.Connect(cfg.username, cfg.password, cfg.region)
-	if err != nil {
+	s := &carwings.Session{
+		Region:   region,
+		Filename: sessionFile,
+	}
+
+	if err := s.Connect(username, password); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		os.Exit(1)
 	}

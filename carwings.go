@@ -85,9 +85,14 @@ const (
 
 // Session defines a one or more connections to the Carwings service
 type Session struct {
+	// Region is one of the predefined region codes where this car operates.
+	Region string
+
+	// Filename is an optional file to load and save an existing session to.
+	Filename string
+
 	username        string
 	encpw           string
-	region          string
 	vin             string
 	customSessionID string
 	tz              string
@@ -341,7 +346,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 
 // Connect establishes a new authenticated Session with the Carwings
 // service.
-func Connect(username, password, region string) (*Session, error) {
+func (s *Session) Connect(username, password string) error {
 	params := url.Values{}
 	params.Set("initial_app_strings", initialAppStrings)
 
@@ -351,21 +356,26 @@ func Connect(username, password, region string) (*Session, error) {
 		Baseprm string `json:"baseprm"`
 	}
 	if err := apiRequest("InitialApp.php", params, &initResp); err != nil {
-		return nil, err
+		return err
 	}
 
 	encpw, err := encrypt(password, initResp.Baseprm)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	s := &Session{
-		username: username,
-		encpw:    encpw,
-		region:   region,
+	s.username = username
+	s.encpw = encpw
+
+	if s.Filename != "" {
+		if err := s.load(); err == nil {
+			return nil
+		} else if Debug {
+			fmt.Fprintf(os.Stderr, "Error loading session from %s: %v\n", s.Filename, err)
+		}
 	}
 
-	return s, s.Login()
+	return s.Login()
 }
 
 func (s *Session) Login() error {
@@ -374,7 +384,7 @@ func (s *Session) Login() error {
 
 	params.Set("UserId", s.username)
 	params.Set("Password", s.encpw)
-	params.Set("RegionCode", s.region)
+	params.Set("RegionCode", s.Region)
 
 	// Not a comprehensive representation, just what we need
 	var loginResp struct {
@@ -401,11 +411,70 @@ func (s *Session) Login() error {
 	}
 	vi := loginResp.VehicleInfoList.VehicleInfo[0]
 
+	s.tz = loginResp.CustomerInfo.Timezone
 	s.loc = loc
 	s.customSessionID = vi.CustomSessionID
 	s.vin = vi.VIN
 
+	if s.Filename != "" {
+		return s.save()
+	}
+
 	return nil
+}
+
+func (s *Session) load() error {
+	if s.Filename[0] == '~' {
+		s.Filename = os.Getenv("HOME") + s.Filename[1:]
+	}
+
+	f, err := os.Open(s.Filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	m := map[string]string{}
+	if err := json.NewDecoder(f).Decode(&m); err != nil {
+		return err
+	}
+
+	s.vin = m["vin"]
+	s.customSessionID = m["customSessionID"]
+	s.tz = m["tz"]
+
+	loc, err := time.LoadLocation(m["tz"])
+	if err != nil {
+		loc = time.UTC
+	}
+	s.loc = loc
+
+	return nil
+}
+
+func (s *Session) save() error {
+	if s.Filename[0] == '~' {
+		s.Filename = os.Getenv("HOME") + s.Filename[1:]
+	}
+
+	f, err := os.OpenFile(s.Filename, os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+
+	m := map[string]string{
+		"vin":             s.vin,
+		"customSessionID": s.customSessionID,
+		"tz":              s.tz,
+	}
+
+	if err := json.NewEncoder(f).Encode(m); err != nil {
+		f.Close()
+		os.Remove(s.Filename)
+		return err
+	}
+
+	return f.Close()
 }
 
 func (s *Session) apiRequest(endpoint string, params url.Values, target response) error {
@@ -430,7 +499,7 @@ func (s *Session) setCommonParams(params url.Values) url.Values {
 		params = url.Values{}
 	}
 
-	params.Set("RegionCode", s.region)
+	params.Set("RegionCode", s.Region)
 	params.Set("VIN", s.vin)
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
