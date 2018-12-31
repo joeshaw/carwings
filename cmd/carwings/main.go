@@ -5,13 +5,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/joeshaw/carwings"
+	"github.com/peterbourgon/ff"
 )
 
 type config struct {
@@ -43,33 +44,23 @@ func usage() {
 func main() {
 	var cfg config
 
-	flag.StringVar(&cfg.username, "username", "", "carwings username")
-	flag.StringVar(&cfg.password, "password", "", "carwings password")
-	flag.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
-	flag.BoolVar(&carwings.Debug, "debug", false, "debug mode")
-	flag.Usage = usage
-	flag.Parse()
+	fs := flag.NewFlagSet("carwings", flag.ExitOnError)
+	fs.StringVar(&cfg.username, "username", "", "carwings username")
+	fs.StringVar(&cfg.password, "password", "", "carwings password")
+	fs.StringVar(&cfg.region, "region", carwings.RegionUSA, "carwings region")
+	fs.BoolVar(&carwings.Debug, "debug", false, "debug mode")
+	fs.Usage = usage
 
-	args := flag.Args()
+	ff.Parse(fs, os.Args[1:],
+		ff.WithConfigFile(filepath.Join(os.Getenv("HOME"), ".carwings")),
+		ff.WithConfigFileParser(configParser),
+		ff.WithEnvVarPrefix("CARWINGS"),
+	)
+
+	args := fs.Args()
 	if len(args) < 1 {
 		usage()
 		os.Exit(1)
-	}
-
-	if v := os.Getenv("CARWINGS_USERNAME"); v != "" && cfg.username == "" {
-		cfg.username = v
-	}
-
-	if v := os.Getenv("CARWINGS_PASSWORD"); v != "" && cfg.password == "" {
-		cfg.password = v
-	}
-
-	u, pw := readDotfile()
-	if u != "" && cfg.username == "" {
-		cfg.username = u
-	}
-	if pw != "" && cfg.password == "" {
-		cfg.password = pw
 	}
 
 	if cfg.username == "" {
@@ -129,37 +120,44 @@ func main() {
 	}
 }
 
-func readDotfile() (string, string) {
-	u, err := user.Current()
-	if err != nil {
-		return "", ""
-	}
-
-	f, err := os.Open(filepath.Join(u.HomeDir, ".carwings"))
-	if err != nil {
-		return "", ""
-	}
-	defer f.Close()
-
-	const (
-		usernamePrefix = "username: "
-		passwordPrefix = "password: "
-	)
-
-	var username, password string
-
-	s := bufio.NewScanner(f)
+func configParser(r io.Reader, set func(name, value string) error) error {
+	// This is a copy of ff.PlainParser() with two differences:
+	// 1. This strips trailing colons from the names, to maintain
+	//    backward compatibility with the old config file format
+	// 2. This ignores intra-line # symbols, which PlainParser
+	//    interprets as comments and strips.  This caused problems
+	//    with passwords that included them.
+	s := bufio.NewScanner(r)
 	for s.Scan() {
-		l := s.Text()
-		switch {
-		case strings.HasPrefix(l, usernamePrefix):
-			username = l[len(usernamePrefix):]
-		case strings.HasPrefix(l, passwordPrefix):
-			password = l[len(passwordPrefix):]
+		line := strings.TrimSpace(s.Text())
+		if line == "" {
+			continue // skip empties
+		}
+
+		if line[0] == '#' {
+			continue // skip comments
+		}
+
+		var (
+			name  string
+			value string
+			index = strings.IndexRune(line, ' ')
+		)
+		if index < 0 {
+			name, value = line, "true" // boolean option
+		} else {
+			name, value = line[:index], strings.TrimSpace(line[index:])
+		}
+
+		if strings.HasSuffix(name, ":") {
+			name = name[:len(name)-1]
+		}
+
+		if err := set(name, value); err != nil {
+			return err
 		}
 	}
-
-	return username, password
+	return nil
 }
 
 func runUpdate(s *carwings.Session, args []string) error {
