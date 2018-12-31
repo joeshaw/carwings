@@ -88,7 +88,7 @@ type Session struct {
 	username        string
 	encpw           string
 	region          string
-	VIN             string
+	vin             string
 	customSessionID string
 	tz              string
 	loc             *time.Location
@@ -403,7 +403,7 @@ func (s *Session) Login() error {
 
 	s.loc = loc
 	s.customSessionID = vi.CustomSessionID
-	s.VIN = vi.VIN
+	s.vin = vi.VIN
 
 	return nil
 }
@@ -431,7 +431,7 @@ func (s *Session) setCommonParams(params url.Values) url.Values {
 	}
 
 	params.Set("RegionCode", s.region)
-	params.Set("VIN", s.VIN)
+	params.Set("VIN", s.vin)
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
 	return params
