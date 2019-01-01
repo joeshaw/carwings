@@ -382,15 +382,18 @@ func (s *Session) Login() error {
 	params.Set("RegionCode", s.Region)
 
 	// Not a comprehensive representation, just what we need
+	type vehicleInfo struct {
+		VIN             string `json:"vin"`
+		CustomSessionID string `json:"custom_sessionid"`
+	}
+
 	var loginResp struct {
 		baseResponse
 
+		VehicleInfos    []vehicleInfo `json:"vehicleInfo"`
 		VehicleInfoList struct {
-			VehicleInfo []struct {
-				VIN             string `json:"vin"`
-				CustomSessionID string `json:"custom_sessionid"`
-			} `json:"vehicleInfo"`
-		}
+			VehicleInfos []vehicleInfo `json:"vehicleInfo"`
+		} `json:"vehicleInfoList"`
 
 		CustomerInfo struct {
 			Timezone string
@@ -400,16 +403,22 @@ func (s *Session) Login() error {
 		return err
 	}
 
+	var vi vehicleInfo
+	if len(loginResp.VehicleInfos) > 0 {
+		vi = loginResp.VehicleInfos[0]
+	} else {
+		vi = loginResp.VehicleInfoList.VehicleInfos[0]
+	}
+
+	s.customSessionID = vi.CustomSessionID
+	s.vin = vi.VIN
+	s.tz = loginResp.CustomerInfo.Timezone
+
 	loc, err := time.LoadLocation(loginResp.CustomerInfo.Timezone)
 	if err != nil {
 		loc = time.UTC
 	}
-	vi := loginResp.VehicleInfoList.VehicleInfo[0]
-
-	s.tz = loginResp.CustomerInfo.Timezone
 	s.loc = loc
-	s.customSessionID = vi.CustomSessionID
-	s.vin = vi.VIN
 
 	if s.Filename != "" {
 		return s.save()
