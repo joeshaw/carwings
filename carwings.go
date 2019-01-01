@@ -88,7 +88,7 @@ type Session struct {
 
 	username        string
 	encpw           string
-	vin             string
+	VIN             string
 	customSessionID string
 	tz              string
 	loc             *time.Location
@@ -466,7 +466,7 @@ func (s *Session) Login() error {
 	}
 
 	s.customSessionID = vi.CustomSessionID
-	s.vin = vi.VIN
+	s.VIN = vi.VIN
 	s.tz = loginResp.CustomerInfo.Timezone
 
 	loc, err := time.LoadLocation(loginResp.CustomerInfo.Timezone)
@@ -498,7 +498,7 @@ func (s *Session) load() error {
 		return err
 	}
 
-	s.vin = m["vin"]
+	s.VIN = m["vin"]
 	s.customSessionID = m["customSessionID"]
 	s.tz = m["tz"]
 
@@ -522,7 +522,7 @@ func (s *Session) save() error {
 	}
 
 	m := map[string]string{
-		"vin":             s.vin,
+		"vin":             s.VIN,
 		"customSessionID": s.customSessionID,
 		"tz":              s.tz,
 	}
@@ -559,7 +559,7 @@ func (s *Session) setCommonParams(params url.Values) url.Values {
 	}
 
 	params.Set("RegionCode", s.Region)
-	params.Set("VIN", s.vin)
+	params.Set("VIN", s.VIN)
 	params.Set("custom_sessionid", s.customSessionID)
 	params.Set("tz", s.tz)
 	return params
