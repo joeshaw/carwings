@@ -1002,6 +1002,19 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 	//      "DisplayMonth": "Aug/2018"
 	//    }
 	//  }
+	type detailInfoDate struct {
+		//      "PriceSimulatorDetailInfoDateList": {
+		//        "PriceSimulatorDetailInfoDate": [
+		//          {
+		//            "TargetDate": "2018-08-05",
+		//            "PriceSimulatorDetailInfoTripList": {
+		//              "PriceSimulatorDetailInfoTrip": [
+		TargetDate string
+		// DisplayDate string  // ignored
+		Trips struct {
+			List []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
+		} `json:"PriceSimulatorDetailInfoTripList"`
+	}
 
 	var resp struct {
 		baseResponse
@@ -1018,19 +1031,8 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 			// - MainRateFlg
 			// - ExistFlg
 			Detail struct {
-				List []struct {
-					//      "PriceSimulatorDetailInfoDateList": {
-					//        "PriceSimulatorDetailInfoDate": [
-					//          {
-					//            "TargetDate": "2018-08-05",
-					//            "PriceSimulatorDetailInfoTripList": {
-					//              "PriceSimulatorDetailInfoTrip": [
-					TargetDate string
-					// DisplayDate string  // ignored
-					Trips struct {
-						List []TripDetail `json:"PriceSimulatorDetailInfoTrip"`
-					} `json:"PriceSimulatorDetailInfoTripList"`
-				} `json:"PriceSimulatorDetailInfoDate"`
+				RawList json.RawMessage  `json:"PriceSimulatorDetailInfoDate"`
+				List    []detailInfoDate `json:"-"`
 			} `json:"PriceSimulatorDetailInfoDateList"`
 			Total MonthlyTotals `json:"PriceSimulatorTotalInfo"`
 		} `json:"PriceSimulatorDetailInfoResponsePersonalData"`
@@ -1043,6 +1045,14 @@ func (s *Session) GetMonthlyStatistics(month time.Time) (MonthlyStatistics, erro
 
 	if err := s.apiRequest("PriceSimulatorDetailInfoRequest.php", params, &resp); err != nil {
 		return ms, err
+	}
+
+	// This field is an empty string instead of an object if there's no data.
+	if string(resp.Data.Detail.RawList) != `""` {
+		err := json.Unmarshal(resp.Data.Detail.RawList, &resp.Data.Detail.List)
+		if err != nil {
+			return ms, err
+		}
 	}
 
 	ms.EfficiencyScale = resp.Data.ElectricCostScale
