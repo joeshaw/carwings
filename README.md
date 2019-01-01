@@ -32,7 +32,7 @@ This will print something like:
     Getting latest retrieved battery status...
     Battery status as of 2017-08-06 15:43:00 -0400 EDT:
       Capacity: 240 / 240 (92%)
-      Crusing range: 114 mi (107 mi with AC)
+      Crusing range: 114 miles (107 mi with AC)
       Plug-in state: not connected
       Charging status: not charging
       Time to full:
@@ -43,18 +43,14 @@ This will print something like:
 For some people the username is an email address.  For others it's a
 distinct username.
 
-Usernames and passwords can also be provided through the environment
-variables `CARWINGS_USERNAME` and `CARWINGS_PASSWORD` or in a
-`~/.carwings` file in the format:
+Config values can be provided through environment variables (such as
+`CARWINGS_USERNAME`) or in a `~/.carwings` file in the format:
 
 ```
-username: <username>
-password: <password>
+username <username>
+password <password>
+region NA
 ```
-
-### TODO
-
-- [ ] Save authentication token somewhere, so we don't re-login on every run.
 
 ## Carwings protocol
 
