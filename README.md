@@ -63,15 +63,22 @@ https://github.com/joshperry/carwings
 Jason Horne has a Python implementation:
 https://github.com/jdhorne/pycarwings2
 
+Phil Cole has taken it, ported it to Python 3, and is carrying it
+forward: https://github.com/filcole/pycarwings2
+
 Guillaume Boudreau has a PHP implementation:
 https://github.com/gboudreau/nissan-connect-php
 
 Scott Helme created a Javascript Alexa skill:
 https://github.com/ScottHelme/AlexaNissanLeaf
 
-Tobias Westergaard Kjeldsen has created a Dart library for carwings as well as an Android app:
-https://gitlab.com/tobiaswkjeldsen/dartcarwings
-https://gitlab.com/tobiaswkjeldsen/carwingsflutter
+Tobias Westergaard Kjeldsen has created a [Dart library for
+carwings](https://gitlab.com/tobiaswkjeldsen/dartcarwings) as well as
+[an Android app](https://gitlab.com/tobiaswkjeldsen/carwingsflutter).
+
+A new North America-only API is being tracked in [issue
+#3](https://github.com/joeshaw/carwings/issues/3), and more
+information is available there.
 
 ## Contributing
 
