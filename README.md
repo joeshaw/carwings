@@ -87,7 +87,7 @@ sure the code has been run through `gofmt`.
 
 ## License
 
-Copyright 2017-2018 Joe Shaw
+Copyright 2017-2019 Joe Shaw
 
 `carwings` is licensed under the MIT License.  See the LICENSE file
 for details.
