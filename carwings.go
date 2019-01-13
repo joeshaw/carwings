@@ -33,6 +33,10 @@ var (
 	// service when fetching updated vehicle data.
 	ErrUpdateFailed = errors.New("failed to retrieve updated info from vehicle")
 
+	// ErrBatteryStatusUnavailable is returned from the
+	// BatteryStatus method when no data is available.
+	ErrBatteryStatusUnavailable = errors.New("battery status unavailable")
+
 	// Debug indiciates whether to log HTTP responses to stderr
 	Debug = false
 )
@@ -619,7 +623,7 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 			delete(s.resultKeyMap, resultKey)
 			return true, err
 		}
-        }
+	}
 
 	// What we're going to do instead is track in the session when
 	// a result key was returned in UpdateStatus(), and return
@@ -637,6 +641,9 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 	}
 
 	bs, err := s.BatteryStatus()
+	if err == ErrBatteryStatusUnavailable {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
@@ -654,42 +661,52 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 // cached from the last time the vehicle data was updated.  Use
 // UpdateStatus method to update vehicle data.
 func (s *Session) BatteryStatus() (BatteryStatus, error) {
+	type batteryStatusRecord struct {
+		BatteryStatus struct {
+			BatteryChargingStatus     string
+			BatteryCapacity           int `json:",string"`
+			BatteryRemainingAmount    int `json:",string"`
+			BatteryRemainingAmountWH  string
+			BatteryRemainingAmountKWH string
+			SOC                       struct {
+				Value int `json:",string"`
+			}
+		}
+		PluginState        string
+		CruisingRangeAcOn  json.Number `json:",string"`
+		CruisingRangeAcOff json.Number `json:",string"`
+		TimeRequiredToFull struct {
+			HourRequiredToFull    int `json:",string"`
+			MinutesRequiredToFull int `json:",string"`
+		}
+		TimeRequiredToFull200 struct {
+			HourRequiredToFull    int `json:",string"`
+			MinutesRequiredToFull int `json:",string"`
+		}
+		TimeRequiredToFull200_6kW struct {
+			HourRequiredToFull    int `json:",string"`
+			MinutesRequiredToFull int `json:",string"`
+		}
+		NotificationDateAndTime cwTime
+	}
+
 	var resp struct {
 		baseResponse
-		BatteryStatusRecords struct {
-			BatteryStatus struct {
-				BatteryChargingStatus     string
-				BatteryCapacity           int `json:",string"`
-				BatteryRemainingAmount    int `json:",string"`
-				BatteryRemainingAmountWH  string
-				BatteryRemainingAmountKWH string
-				SOC                       struct {
-					Value int `json:",string"`
-				}
-			}
-			PluginState        string
-			CruisingRangeAcOn  json.Number `json:",string"`
-			CruisingRangeAcOff json.Number `json:",string"`
-			TimeRequiredToFull struct {
-				HourRequiredToFull    int `json:",string"`
-				MinutesRequiredToFull int `json:",string"`
-			}
-			TimeRequiredToFull200 struct {
-				HourRequiredToFull    int `json:",string"`
-				MinutesRequiredToFull int `json:",string"`
-			}
-			TimeRequiredToFull200_6kW struct {
-				HourRequiredToFull    int `json:",string"`
-				MinutesRequiredToFull int `json:",string"`
-			}
-			NotificationDateAndTime cwTime
-		}
+		BatteryStatusRecords json.RawMessage
 	}
 	if err := s.apiRequest("BatteryStatusRecordsRequest.php", nil, &resp); err != nil {
 		return BatteryStatus{}, err
 	}
 
-	batrec := resp.BatteryStatusRecords
+	if string(resp.BatteryStatusRecords) == "[]" {
+		return BatteryStatus{}, ErrBatteryStatusUnavailable
+	}
+
+	var batrec batteryStatusRecord
+	if err := json.Unmarshal(resp.BatteryStatusRecords, &batrec); err != nil {
+		return BatteryStatus{}, err
+	}
+
 	acOn, _ := batrec.CruisingRangeAcOn.Float64()
 	acOff, _ := batrec.CruisingRangeAcOff.Float64()
 
