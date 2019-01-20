@@ -18,10 +18,9 @@ import (
 )
 
 const (
-	baseURL = "https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/"
-
-	// Extracted from the NissanConnect EV app
-	initialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
+	// Moved these to vars - we need to continuously update them...
+	//baseURL = "https://gdcportalgw.its-mo.com/api_v181217_NE/gdc/"
+	//initialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
 )
 
 var (
@@ -39,6 +38,10 @@ var (
 
 	// Debug indiciates whether to log HTTP responses to stderr
 	Debug = false
+
+	// Changed from being a constant to make it easier to update/override
+	BaseURL = "https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/"
+	InitialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
 )
 
 func pkcs5Padding(data []byte, blocksize int) []byte {
@@ -363,10 +366,10 @@ func (r *baseResponse) ErrorMessage() string {
 
 func apiRequest(endpoint string, params url.Values, target response) error {
 	if Debug {
-		fmt.Fprintf(os.Stderr, "POST %s %s\n", baseURL+endpoint, params)
+		fmt.Fprintf(os.Stderr, "POST %s %s\n", BaseURL+endpoint, params)
 	}
 
-	resp, err := http.PostForm(baseURL+endpoint, params)
+	resp, err := http.PostForm(BaseURL+endpoint, params)
 	if err != nil {
 		return err
 	}
@@ -405,7 +408,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 // service.
 func (s *Session) Connect(username, password string) error {
 	params := url.Values{}
-	params.Set("initial_app_strings", initialAppStrings)
+	params.Set("initial_app_strings", InitialAppStrings)
 
 	var initResp struct {
 		baseResponse
@@ -437,7 +440,7 @@ func (s *Session) Connect(username, password string) error {
 
 func (s *Session) Login() error {
 	params := url.Values{}
-	params.Set("initial_app_strings", initialAppStrings)
+	params.Set("initial_app_strings", InitialAppStrings)
 
 	params.Set("UserId", s.username)
 	params.Set("Password", s.encpw)
