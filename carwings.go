@@ -41,6 +41,8 @@ var (
 
 	// Changed from being a constant to make it easier to update/override
 	BaseURL = "https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/"
+
+	// Extracted from the NissanConnect EV app
 	InitialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
 )
 
