@@ -780,7 +780,9 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 	acOn, _ := racr.CruisingRangeAcOn.Float64()
 	acOff, _ := racr.CruisingRangeAcOff.Float64()
 
-	running := racr.RemoteACOperation == "START"
+	// Only accept that climate is running if the response is clear. Otherwise assume not running
+	running := ( ( racr.RemoteACOperation == "START" ) && ( racr.OperationResult != electricWaveAbnormal) );
+
 	acStopTime := time.Time(racr.ACStartStopDateAndTime).In(s.loc)
 	if running {
 		if NotConnected == PluginState(racr.PluginState) {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/joeshaw/carwings"
+	"github.com/winterhalder/carwings"
 	"github.com/peterbourgon/ff"
 )
 
