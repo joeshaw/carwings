@@ -37,7 +37,9 @@ var (
 	// Debug indiciates whether to log HTTP responses to stderr
 	Debug = false
 
-	// Changed from being a constant to make it easier to update/override
+	// Default URL for connecting to Carwings service.  This is
+	// changed by Nissan from time to time, so it's helpful to
+	// have it be configurable.
 	BaseURL = "https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/"
 )
 
