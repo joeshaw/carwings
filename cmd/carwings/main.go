@@ -232,7 +232,7 @@ func waitForResult(key string, timeout time.Duration, poll func(string) (bool, e
 			break
 		}
 		if time.Since(start) > timeout {
-			err = errors.Errorf("timed out waiting %v for update", timeout)
+			err = fmt.Errorf("timed out waiting %v for update", timeout)
 		}
 		if err != nil {
 			fmt.Println("! :-(")
