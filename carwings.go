@@ -648,15 +648,15 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 		return false, err
 	}
 
-        // The original start value was an estimate.  If the timestamp
+	// The original start value was an estimate.  If the timestamp
 	// returned from the API is before our that start, that was
 	// the real last update time and we should use it instead.
 	if bs.Timestamp.Before(start) {
 		start = bs.Timestamp
 		s.resultKeyMap[resultKey] = start
-        }
+	}
 
-        if bs.Timestamp.After(start) {
+	if bs.Timestamp.After(start) {
 		delete(s.resultKeyMap, resultKey)
 		return true, nil
 	}
