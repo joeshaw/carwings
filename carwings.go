@@ -589,7 +589,7 @@ func (s *Session) UpdateStatus() (string, error) {
 	if s.resultKeyMap == nil {
 		s.resultKeyMap = make(map[string]time.Time)
 	}
-	s.resultKeyMap[resp.ResultKey] = time.Now()
+	s.resultKeyMap[resp.ResultKey] = time.Now().In(s.loc)
 
 	return resp.ResultKey, nil
 }
@@ -648,7 +648,15 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 		return false, err
 	}
 
-	if bs.Timestamp.After(start) {
+        // The original start value was an estimate.  If the timestamp
+	// returned from the API is before our that start, that was
+	// the real last update time and we should use it instead.
+	if bs.Timestamp.Before(start) {
+		start = bs.Timestamp
+		s.resultKeyMap[resultKey] = start
+        }
+
+        if bs.Timestamp.After(start) {
 		delete(s.resultKeyMap, resultKey)
 		return true, nil
 	}
