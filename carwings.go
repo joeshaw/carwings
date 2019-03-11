@@ -390,7 +390,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 	case http.StatusOK:
 		return nil
 
-	case http.StatusUnauthorized:
+	case http.StatusUnauthorized, http.StatusRequestTimeout:
 		return ErrNotLoggedIn
 
 	default:
