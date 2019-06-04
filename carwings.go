@@ -34,6 +34,10 @@ var (
 	// BatteryStatus method when no data is available.
 	ErrBatteryStatusUnavailable = errors.New("battery status unavailable")
 
+	// ErrVehicleInfoUnavailable is returned when vehicle information is
+	// not available when logging in.
+	ErrVehicleInfoUnavailable = errors.New("vehicle info unavailable")
+
 	// Debug indiciates whether to log HTTP responses to stderr
 	Debug = false
 
@@ -454,10 +458,12 @@ func (s *Session) Login() error {
 	var loginResp struct {
 		baseResponse
 
+		// OMG this API... one of these three will be populated.
 		VehicleInfos    []vehicleInfo `json:"vehicleInfo"`
 		VehicleInfoList struct {
 			VehicleInfos []vehicleInfo `json:"vehicleInfo"`
 		} `json:"vehicleInfoList"`
+		VehicleInfo vehicleInfo `json:"VehicleInfo"`
 
 		CustomerInfo struct {
 			Timezone string
@@ -468,10 +474,19 @@ func (s *Session) Login() error {
 	}
 
 	var vi vehicleInfo
-	if len(loginResp.VehicleInfos) > 0 {
+	switch {
+	case len(loginResp.VehicleInfos) > 0:
 		vi = loginResp.VehicleInfos[0]
-	} else {
+
+	case len(loginResp.VehicleInfoList.VehicleInfos) > 0:
 		vi = loginResp.VehicleInfoList.VehicleInfos[0]
+
+	default:
+		vi = loginResp.VehicleInfo
+	}
+
+	if vi.VIN == "" {
+		return ErrVehicleInfoUnavailable
 	}
 
 	s.customSessionID = vi.CustomSessionID
