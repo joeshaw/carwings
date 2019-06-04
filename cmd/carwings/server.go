@@ -13,13 +13,13 @@ import (
 	"github.com/joeshaw/carwings"
 )
 
-func updateLoop(ctx context.Context, s *carwings.Session) {
+func updateLoop(ctx context.Context, s *carwings.Session, interval time.Duration) {
 	_, err := s.UpdateStatus()
 	if err != nil {
 		fmt.Printf("Error updating status: %s\n", err)
 	}
 
-	t := time.NewTicker(10 * time.Minute)
+	t := time.NewTicker(interval)
 	defer t.Stop()
 
 	for {
@@ -51,7 +51,9 @@ func runServer(s *carwings.Session, cfg config, args []string) error {
 		srv.Shutdown(context.Background())
 	}()
 
-	go updateLoop(ctx, s)
+	if cfg.serverUpdateInterval > 0 {
+		go updateLoop(ctx, s, cfg.serverUpdateInterval)
+	}
 
 	const timeout = 5 * time.Second
 
