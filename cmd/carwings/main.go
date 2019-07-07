@@ -427,7 +427,7 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 		}
 		if distance > 0 {
 			fmt.Println("          =======  =======")
-			efficiency := (power / metersToUnits(cfg.units, distance)) / 10
+			efficiency := (power / metersToUnits(cfg.units, distance)) / 1000
 			fmt.Printf("          %5.1f%s %5.1f %-10.10s\n\n",
 				metersToUnits(cfg.units, distance), cfg.units, efficiency, ms.EfficiencyScale)
 		}
