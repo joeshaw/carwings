@@ -406,7 +406,7 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 	fmt.Printf("Monthly Driving Statistics for %s\n", time.Now().Local().Format("January 2006"))
 	fmt.Printf("  Driving efficiency: %.4f %s over %s in %d trips\n",
 		ms.Total.Efficiency*1000, ms.EfficiencyScale, prettyUnits(cfg.units, ms.Total.MetersTravelled), ms.Total.Trips)
-	fmt.Printf("  Driving cost: %.4f at a rate of %.4f/kWh for %.1fkWh => %.4f/%s\n",
+	fmt.Printf("  Driving cost: %.4f at a rate of %.4f/kWh for %.1f kWh => %.4f/%s\n",
 		ms.ElectricityBill, ms.ElectricityRate, ms.Total.PowerConsumed, ms.ElectricityBill/metersToUnits(cfg.units, ms.Total.MetersTravelled), cfg.units)
 	fmt.Println()
 
@@ -422,14 +422,14 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 			distance += t.Meters
 			power += t.PowerConsumedTotal
 
-			fmt.Printf("    %5s %s %5.1f %-10.10s\n", t.Started.Local().Format("15:04"),
-				prettyUnits(cfg.units, t.Meters), t.Efficiency, ms.EfficiencyScale)
+			fmt.Printf("    %5s %6.1f %s %5.1f %-10.10s %6.1f kWh\n", t.Started.Local().Format("15:04"),
+				metersToUnits(cfg.units, t.Meters), cfg.units, t.Efficiency, ms.EfficiencyScale, t.PowerConsumedTotal/1000)
 		}
 		if distance > 0 {
-			fmt.Println("          =======  =======")
+			fmt.Println("          ============ ============== ============")
 			efficiency := (power / metersToUnits(cfg.units, distance)) / 1000
-			fmt.Printf("          %5.1f%s %5.1f %-10.10s\n\n",
-				metersToUnits(cfg.units, distance), cfg.units, efficiency, ms.EfficiencyScale)
+			fmt.Printf("          %6.1f %s %5.1f %-10.10s %6.1f kWh\n\n",
+				metersToUnits(cfg.units, distance), cfg.units, efficiency, ms.EfficiencyScale, power/1000)
 		}
 	}
 
