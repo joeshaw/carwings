@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	initialAppStrings = "geORNtsZe5I4lRGjG9GZiA"
+	initialAppStrings = "9s5rfKVuMrT03RtzajWNcA"
 )
 
 var (
@@ -44,7 +44,7 @@ var (
 	// Default URL for connecting to Carwings service.  This is
 	// changed by Nissan from time to time, so it's helpful to
 	// have it be configurable.
-	BaseURL = "https://gdcportalgw.its-mo.com/gworchest_160803EC/gdc/"
+	BaseURL = "https://gdcportalgw.its-mo.com/api_v190426_NE/gdc/"
 )
 
 func pkcs5Padding(data []byte, blocksize int) []byte {
@@ -411,14 +411,14 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 // service.
 func (s *Session) Connect(username, password string) error {
 	params := url.Values{}
-	params.Set("initial_app_strings", initialAppStrings)
+	params.Set("initial_app_str", initialAppStrings)
 
 	var initResp struct {
 		baseResponse
 		Message string `json:"message"`
 		Baseprm string `json:"baseprm"`
 	}
-	if err := apiRequest("InitialApp.php", params, &initResp); err != nil {
+	if err := apiRequest("InitialApp_v2.php", params, &initResp); err != nil {
 		return err
 	}
 
@@ -443,7 +443,7 @@ func (s *Session) Connect(username, password string) error {
 
 func (s *Session) Login() error {
 	params := url.Values{}
-	params.Set("initial_app_strings", initialAppStrings)
+	params.Set("initial_app_str", initialAppStrings)
 
 	params.Set("UserId", s.username)
 	params.Set("Password", s.encpw)
