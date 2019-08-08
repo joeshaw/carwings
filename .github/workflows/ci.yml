@@ -1,0 +1,23 @@
+name: Go
+on: [push]
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.12
+      uses: actions/setup-go@v1
+      with:
+        version: 1.12
+      id: go
+
+    - name: Check out code into the Go module directory
+      use: actions/checkout@master
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Build
+      run: go install ./...
