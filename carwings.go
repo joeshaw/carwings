@@ -415,7 +415,6 @@ func (s *Session) Connect(username, password string) error {
 
 	var initResp struct {
 		baseResponse
-		Message string `json:"message"`
 		Baseprm string `json:"baseprm"`
 	}
 	if err := apiRequest("InitialApp_v2.php", params, &initResp); err != nil {
