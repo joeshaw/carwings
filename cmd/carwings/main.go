@@ -28,7 +28,7 @@ const (
 func usage(fs *flag.FlagSet) func() {
 	return func() {
 		fmt.Fprintf(os.Stderr, "USAGE\n")
-		fmt.Fprintf(os.Stderr, "  %s <mode> [flags]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s [flags] <command>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "FLAGS\n")
 		fs.VisitAll(func(f *flag.Flag) {
