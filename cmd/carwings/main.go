@@ -343,7 +343,7 @@ func runClimateOff(s *carwings.Session, cfg config, args []string) error {
 	fmt.Print("Waiting for climate control update to complete... ")
 	err = waitForResult(key, cfg.timeout, s.CheckClimateOffRequest)
 	if err == nil {
-		fmt.Println("Climate control turned on")
+		fmt.Println("Climate control turned off")
 	}
 	return err
 }
