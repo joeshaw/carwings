@@ -28,7 +28,7 @@ const (
 func usage(fs *flag.FlagSet) func() {
 	return func() {
 		fmt.Fprintf(os.Stderr, "USAGE\n")
-		fmt.Fprintf(os.Stderr, "  %s <mode> [flags]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s [flags] <command>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "FLAGS\n")
 		fs.VisitAll(func(f *flag.Flag) {
@@ -343,7 +343,7 @@ func runClimateOff(s *carwings.Session, cfg config, args []string) error {
 	fmt.Print("Waiting for climate control update to complete... ")
 	err = waitForResult(key, cfg.timeout, s.CheckClimateOffRequest)
 	if err == nil {
-		fmt.Println("Climate control turned on")
+		fmt.Println("Climate control turned off")
 	}
 	return err
 }
