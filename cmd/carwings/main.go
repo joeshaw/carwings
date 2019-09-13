@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
-		fmt.Fprintf(os.Stderr, "  monthly           Monthly driving statistics\n")
+		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
 		fmt.Fprintf(os.Stderr, "\n")
 	}
@@ -398,12 +399,31 @@ func runLocate(s *carwings.Session, cfg config, args []string) error {
 func runMonthly(s *carwings.Session, cfg config, args []string) error {
 	fmt.Println("Sending monthly statistics request...")
 
-	ms, err := s.GetMonthlyStatistics(time.Now().Local())
+	var month time.Time
+	if len(args) == 0 {
+		month = time.Now().Local()
+	} else {
+		y, err := strconv.Atoi(args[0])
+		if err != nil {
+			return err
+		}
+		if len(args) > 1 {
+			m, err := strconv.Atoi(args[1])
+			if err != nil {
+				return err
+			}
+			month = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
+		} else {
+			month = time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+	}
+
+	ms, err := s.GetMonthlyStatistics(month)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Monthly Driving Statistics for %s\n", time.Now().Local().Format("January 2006"))
+	fmt.Printf("Monthly Driving Statistics for %s\n", month.Format("January 2006"))
 	fmt.Printf("  Driving efficiency: %.4f %s over %s in %d trips\n",
 		ms.Total.Efficiency*1000, ms.EfficiencyScale, prettyUnits(cfg.units, ms.Total.MetersTravelled), ms.Total.Trips)
 	fmt.Printf("  Driving cost: %.4f at a rate of %.4f/kWh for %.1f kWh => %.4f/%s\n",
