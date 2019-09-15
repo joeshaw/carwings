@@ -28,8 +28,8 @@ const (
 )
 
 const (
-	unitskWhPerMile = "kWh/mile"
-	unitskWhPerKm = "kWh/km"
+	unitskWhPerMile  = "kWh/mile"
+	unitskWhPerKm    = "kWh/km"
 	unitskWhPer100Km = "kWh/100km"
 )
 
@@ -229,7 +229,7 @@ func metersToUnits(units string, meters int) float64 {
 	panic("should not be reached")
 }
 
-func efficiencyToUnits(unitsIn string, unitsOut string, efficiency float64) float64 {
+func efficiencyToUnits(unitsIn, unitsOut string, efficiency float64) float64 {
 	const milesPerKm = 0.621371
 
 	switch unitsIn {
