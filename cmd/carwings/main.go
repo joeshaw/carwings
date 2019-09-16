@@ -489,15 +489,17 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 			distance += t.Meters
 			power += t.PowerConsumedTotal
 
-			fmt.Printf("    %5s %6.1f %s %5.1f %-10.10s %6.1f kWh\n", t.Started.Local().Format("15:04"),
+			fmt.Printf("    %5s %6.1f %s %5.1f %s %6.1f kWh\n", t.Started.Local().Format("15:04"),
 				metersToUnits(cfg.units, t.Meters), cfg.units,
 				efficiencyToUnits("kWh/km", cfg.effunits, t.Efficiency),
 				cfg.effunits, t.PowerConsumedTotal/1000)
 		}
 		if distance > 0 {
-			fmt.Println("          ============ ============== ============")
+			fmt.Printf("          =======%.*s ======%.*s ==========\n",
+				len(cfg.units), "====",
+				len(cfg.effunits), "=========")
 			efficiency := (power / metersToUnits(cfg.units, distance)) / 1000
-			fmt.Printf("          %6.1f %s %5.1f %-10.10s %6.1f kWh\n\n",
+			fmt.Printf("          %6.1f %s %5.1f %s %6.1f kWh\n\n",
 				metersToUnits(cfg.units, distance), cfg.units,
 				efficiencyToUnits(ms.EfficiencyScale, cfg.effunits, efficiency),
 				cfg.effunits, power/1000)
