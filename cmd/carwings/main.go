@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 type config struct {
 	units                string
+	effunits             string
 	timeout              time.Duration
 	serverUpdateInterval time.Duration
 }
@@ -23,6 +25,12 @@ type config struct {
 const (
 	unitsMiles = "miles"
 	unitsKM    = "km"
+)
+
+const (
+	unitskWhPerMile  = "kWh/mile"
+	unitskWhPerKm    = "kWh/km"
+	unitskWhPer100Km = "kWh/100km"
 )
 
 func usage(fs *flag.FlagSet) func() {
@@ -44,7 +52,7 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
-		fmt.Fprintf(os.Stderr, "  monthly           Monthly driving statistics\n")
+		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
 		fmt.Fprintf(os.Stderr, "\n")
 	}
@@ -63,6 +71,7 @@ func main() {
 	fs.StringVar(&region, "region", carwings.RegionUSA, "carwings region. Defaults to US (NNA).")
 	fs.StringVar(&sessionFile, "session-file", "~/.carwings-session", "carwings session file")
 	fs.StringVar(&cfg.units, "units", unitsMiles, "units to use (miles or km). Defaults to miles.")
+	fs.StringVar(&cfg.effunits, "effunits", unitskWhPerMile, "efficiency units to use (kWh/mile, kWh/km or kWh/100km). Defaults to kWh/mile.")
 	fs.StringVar(&carwings.BaseURL, "url", carwings.BaseURL, "base carwings api endpoint to use")
 	fs.DurationVar(&cfg.timeout, "timeout", 60*time.Second, "update timeout. Defaults to 60s")
 	fs.DurationVar(&cfg.serverUpdateInterval, "server-update-interval", 10*time.Minute, "interval to update battery info when running a server")
@@ -217,6 +226,44 @@ func metersToUnits(units string, meters int) float64 {
 		return float64(meters) / 1000
 	}
 
+	panic("should not be reached")
+}
+
+func efficiencyToUnits(unitsIn, unitsOut string, efficiency float64) float64 {
+	const milesPerKm = 0.621371
+
+	switch unitsIn {
+	case unitskWhPerMile:
+		switch unitsOut {
+		case unitskWhPerMile:
+			return efficiency
+		case unitskWhPerKm:
+			return efficiency * milesPerKm
+		case unitskWhPer100Km:
+			return efficiency * milesPerKm * 100
+		}
+		panic("should not be reached")
+	case unitskWhPerKm:
+		switch unitsOut {
+		case unitskWhPerMile:
+			return efficiency / milesPerKm
+		case unitskWhPerKm:
+			return efficiency
+		case unitskWhPer100Km:
+			return efficiency * 100
+		}
+		panic("should not be reached")
+	case unitskWhPer100Km:
+		switch unitsOut {
+		case unitskWhPerMile:
+			return efficiency / milesPerKm / 100
+		case unitskWhPerKm:
+			return efficiency / 100
+		case unitskWhPer100Km:
+			return efficiency
+		}
+		panic("should not be reached")
+	}
 	panic("should not be reached")
 }
 
@@ -398,14 +445,34 @@ func runLocate(s *carwings.Session, cfg config, args []string) error {
 func runMonthly(s *carwings.Session, cfg config, args []string) error {
 	fmt.Println("Sending monthly statistics request...")
 
-	ms, err := s.GetMonthlyStatistics(time.Now().Local())
+	var month time.Time
+	if len(args) == 0 {
+		month = time.Now().Local()
+	} else {
+		y, err := strconv.Atoi(args[0])
+		if err != nil {
+			return err
+		}
+		if len(args) > 1 {
+			m, err := strconv.Atoi(args[1])
+			if err != nil {
+				return err
+			}
+			month = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.UTC)
+		} else {
+			month = time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)
+		}
+	}
+
+	ms, err := s.GetMonthlyStatistics(month)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Monthly Driving Statistics for %s\n", time.Now().Local().Format("January 2006"))
+	fmt.Printf("Monthly Driving Statistics for %s\n", month.Format("January 2006"))
 	fmt.Printf("  Driving efficiency: %.4f %s over %s in %d trips\n",
-		ms.Total.Efficiency*1000, ms.EfficiencyScale, prettyUnits(cfg.units, ms.Total.MetersTravelled), ms.Total.Trips)
+		efficiencyToUnits(ms.EfficiencyScale, cfg.effunits, ms.Total.Efficiency*1000),
+		cfg.effunits, prettyUnits(cfg.units, ms.Total.MetersTravelled), ms.Total.Trips)
 	fmt.Printf("  Driving cost: %.4f at a rate of %.4f/kWh for %.1f kWh => %.4f/%s\n",
 		ms.ElectricityBill, ms.ElectricityRate, ms.Total.PowerConsumed, ms.ElectricityBill/metersToUnits(cfg.units, ms.Total.MetersTravelled), cfg.units)
 	fmt.Println()
@@ -422,14 +489,20 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 			distance += t.Meters
 			power += t.PowerConsumedTotal
 
-			fmt.Printf("    %5s %6.1f %s %5.1f %-10.10s %6.1f kWh\n", t.Started.Local().Format("15:04"),
-				metersToUnits(cfg.units, t.Meters), cfg.units, t.Efficiency, ms.EfficiencyScale, t.PowerConsumedTotal/1000)
+			fmt.Printf("    %5s %6.1f %s %5.1f %s %6.1f kWh\n", t.Started.Local().Format("15:04"),
+				metersToUnits(cfg.units, t.Meters), cfg.units,
+				efficiencyToUnits("kWh/km", cfg.effunits, t.Efficiency),
+				cfg.effunits, t.PowerConsumedTotal/1000)
 		}
 		if distance > 0 {
-			fmt.Println("          ============ ============== ============")
+			fmt.Printf("          =======%.*s ======%.*s ==========\n",
+				len(cfg.units), "====",
+				len(cfg.effunits), "=========")
 			efficiency := (power / metersToUnits(cfg.units, distance)) / 1000
-			fmt.Printf("          %6.1f %s %5.1f %-10.10s %6.1f kWh\n\n",
-				metersToUnits(cfg.units, distance), cfg.units, efficiency, ms.EfficiencyScale, power/1000)
+			fmt.Printf("          %6.1f %s %5.1f %s %6.1f kWh\n\n",
+				metersToUnits(cfg.units, distance), cfg.units,
+				efficiencyToUnits(ms.EfficiencyScale, cfg.effunits, efficiency),
+				cfg.effunits, power/1000)
 		}
 	}
 
@@ -446,7 +519,8 @@ func runDaily(s *carwings.Session, cfg config, args []string) error {
 
 	fmt.Printf("Daily Driving Statistics for %s\n", ds.TargetDate.Format("2006-01-02"))
 	fmt.Printf("  Driving efficiency: %5.1f %-10.10s %-5.5s\n",
-		ds.Efficiency, ds.EfficiencyScale, strings.Repeat("*", ds.EfficiencyLevel))
+		efficiencyToUnits(ds.EfficiencyScale, cfg.effunits, ds.Efficiency),
+		cfg.effunits, strings.Repeat("*", ds.EfficiencyLevel))
 	fmt.Printf("  Acceleration:     %7.1f %-10.10s %-5.5s\n",
 		ds.PowerConsumedMotor, "kWh", strings.Repeat("*", ds.PowerConsumedMotorLevel))
 	fmt.Printf("  Regeneration:     %7.1f %-10.10s %-5.5s\n",
