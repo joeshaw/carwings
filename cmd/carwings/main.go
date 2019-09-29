@@ -50,6 +50,7 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
 		fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
+		fmt.Fprintf(os.Stderr, "  cabin-temp        Get cabin temperaturel\n")
 		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
@@ -126,6 +127,9 @@ func main() {
 
 	case "climate-on":
 		run = runClimateOn
+
+	case "cabin-temp":
+		run = runCabinTemp
 
 	case "locate":
 		run = runLocate
@@ -410,6 +414,25 @@ func runClimateOn(s *carwings.Session, cfg config, args []string) error {
 		fmt.Println("Climate control turned on")
 	}
 	return err
+}
+
+func runCabinTemp(s *carwings.Session, cfg config, args []string) error {
+	fmt.Println("Getting latest cabin temperature...")
+
+	key, err := s.CabinTempRequest()
+	if err != nil {
+		return err
+	}
+
+	fmt.Print("Waiting for cabin temperature request to complete... ")
+	err = waitForResult(key, cfg.timeout, s.CheckCabinTempRequest)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Cabin temperature: %d°\n", s.GetCabinTemp())
+
+	return nil
 }
 
 func runLocate(s *carwings.Session, cfg config, args []string) error {
