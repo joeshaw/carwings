@@ -1,5 +1,5 @@
 name: Go
-on: [push, pull_request]
+on: pull_request
 jobs:
 
   build:
@@ -18,6 +18,9 @@ jobs:
 
     - name: Run go vet
       run: go vet ./...
+
+    - name: Run staticcheck
+      run: go get honnef.co/go/tools/cmd/staticcheck && ~/go/bin/staticcheck ./...
 
     - name: Build
       run: go install ./...
