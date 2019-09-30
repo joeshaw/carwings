@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	//lint:ignore SA1019 Blowfish is terrible, but that's what the Nissan API uses
 	"golang.org/x/crypto/blowfish"
 )
 
