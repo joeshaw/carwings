@@ -102,6 +102,7 @@ type Session struct {
 	customSessionID string
 	tz              string
 	loc             *time.Location
+	cabinTemp       int
 
 	// workaround for broken battery status update checking
 	resultKeyMap map[string]time.Time
@@ -918,6 +919,45 @@ func (s *Session) ChargingRequest() error {
 	}
 
 	return nil
+}
+
+// CabinTempRequest sends a request to get the cabin temperature. This is an
+// asynchronous operation: it returns a "result key" that can be used
+// to poll for status with the CheckCabinTempRequest method.
+func (s *Session) CabinTempRequest() (string, error) {
+	var resp struct {
+		baseResponse
+		ResultKey string `json:"resultKey"`
+	}
+
+	if err := s.apiRequest("GetInteriorTemperatureRequestForNsp.php", nil, &resp); err != nil {
+		return "", err
+	}
+	return resp.ResultKey, nil
+}
+
+// CheckCabinTempRequest returns whether the CabinTempRequest has finished.
+func (s *Session) CheckCabinTempRequest(resultKey string) (bool, error) {
+	var resp struct {
+		baseResponse
+		ResponseFlag int `json:"responseFlag,string"` // 0 or 1
+		Temperature  int `json:"Inc_temp"`
+	}
+
+	params := url.Values{}
+	params.Set("resultKey", resultKey)
+
+	if err := s.apiRequest("GetInteriorTemperatureResultForNsp.php", params, &resp); err != nil {
+		return false, err
+	}
+	s.cabinTemp = resp.Temperature
+
+	return resp.ResponseFlag == 1, nil
+}
+
+// GetCabinTemp returns the latest cached cabin temperature result.
+func (s *Session) GetCabinTemp() int {
+	return s.cabinTemp
 }
 
 // LocateRequest sends a request to locate the vehicle.  This is an
