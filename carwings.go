@@ -104,9 +104,6 @@ type Session struct {
 	tz              string
 	loc             *time.Location
 	cabinTemp       int
-
-	// workaround for broken battery status update checking
-	resultKeyMap map[string]time.Time
 }
 
 // ClimateStatus contains information about the vehicle's climate
@@ -603,83 +600,31 @@ func (s *Session) UpdateStatus() (string, error) {
 		return "", err
 	}
 
-	// See CheckUpdate() for why this hack is necessary :(
-	if s.resultKeyMap == nil {
-		s.resultKeyMap = make(map[string]time.Time)
-	}
-	s.resultKeyMap[resp.ResultKey] = time.Now().In(s.loc)
-
 	return resp.ResultKey, nil
 }
 
 // CheckUpdate returns whether the update corresponding to the
 // provided result key has finished.
 func (s *Session) CheckUpdate(resultKey string) (bool, error) {
-	// As of December 2018, checking battery status results is
-	// completely broken.  Result keys are never returned as
-	// having completed.
-	if v := os.Getenv("BROKEN_BATTERY_CHECK"); v != "" {
-		params := url.Values{}
-		params.Set("resultKey", resultKey)
+	params := url.Values{}
+	params.Set("resultKey", resultKey)
 
-		var resp struct {
-			baseResponse
-			ResponseFlag    int    `json:"responseFlag,string"`
-			OperationResult string `json:"operationResult"`
-		}
-
-		if err := s.apiRequest("BatteryStatusCheckResultRequest.php", params, &resp); err != nil {
-			return false, err
-		}
-
-		var err error
-		if resp.OperationResult == electricWaveAbnormal {
-			err = ErrUpdateFailed
-		}
-
-		if resp.ResponseFlag == 1 {
-			delete(s.resultKeyMap, resultKey)
-			return true, err
-		}
+	var resp struct {
+		baseResponse
+		ResponseFlag    int    `json:"responseFlag,string"`
+		OperationResult string `json:"operationResult"`
 	}
 
-	// What we're going to do instead is track in the session when
-	// a result key was returned in UpdateStatus(), and return
-	// true when the battery update timestamp is later than the
-	// UpdateStatus timestamp.  This is a terrible hack but is the
-	// best way to do this without requiring client changes, and
-	// hopefully it's a temporary problem.
-	if s.resultKeyMap == nil {
-		return false, nil
-	}
-
-	start, ok := s.resultKeyMap[resultKey]
-	if !ok {
-		return false, nil
-	}
-
-	bs, err := s.BatteryStatus()
-	if err == ErrBatteryStatusUnavailable {
-		return false, nil
-	}
-	if err != nil {
+	if err := s.apiRequest("BatteryStatusCheckResultRequest.php", params, &resp); err != nil {
 		return false, err
 	}
 
-	// The original start value was an estimate.  If the timestamp
-	// returned from the API is before our that start, that was
-	// the real last update time and we should use it instead.
-	if bs.Timestamp.Before(start) {
-		start = bs.Timestamp
-		s.resultKeyMap[resultKey] = start
+	var err error
+	if resp.OperationResult == electricWaveAbnormal {
+		err = ErrUpdateFailed
 	}
 
-	if bs.Timestamp.After(start) {
-		delete(s.resultKeyMap, resultKey)
-		return true, nil
-	}
-
-	return false, nil
+	return resp.ResponseFlag == 1, err
 }
 
 // BatteryStatus returns the most recent battery status from the
