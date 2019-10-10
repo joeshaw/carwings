@@ -50,7 +50,7 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
 		fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
-		fmt.Fprintf(os.Stderr, "  cabin-temp        Get cabin temperaturel\n")
+		fmt.Fprintf(os.Stderr, "  cabin-temp        Get cabin temperature\n")
 		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
