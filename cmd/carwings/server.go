@@ -171,7 +171,7 @@ func runServer(s *carwings.Session, cfg config, args []string) error {
 		}
 	})
 
-	srv.Addr = ":8040"
+	srv.Addr = cfg.serverAddr
 	srv.Handler = nil
 	fmt.Printf("Starting HTTP server on %s...\n", srv.Addr)
 	return srv.ListenAndServe()

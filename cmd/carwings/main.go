@@ -20,6 +20,7 @@ type config struct {
 	effunits             string
 	timeout              time.Duration
 	serverUpdateInterval time.Duration
+	serverAddr           string
 }
 
 const (
@@ -76,6 +77,7 @@ func main() {
 	fs.StringVar(&carwings.BaseURL, "url", carwings.BaseURL, "base carwings api endpoint to use")
 	fs.DurationVar(&cfg.timeout, "timeout", 60*time.Second, "update timeout. Defaults to 60s")
 	fs.DurationVar(&cfg.serverUpdateInterval, "server-update-interval", 10*time.Minute, "interval to update battery info when running a server")
+	fs.StringVar(&cfg.serverAddr, "server-addr", ":8040", "address for HTTP server to listen on")
 	fs.BoolVar(&carwings.Debug, "debug", false, "debug mode")
 	fs.Usage = usage(fs)
 
