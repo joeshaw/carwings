@@ -158,6 +158,9 @@ type BatteryStatus struct {
 	// Remaining battery level.  Units unknown, but same as Capacity.
 	Remaining int
 
+	// Remaining battery level in Watt Hours.
+	RemainingWH int
+
 	// Current state of charge.  In percent, should be roughly
 	// equivalent to Remaining / Capacity * 100.
 	StateOfCharge int // percent
@@ -637,7 +640,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 			BatteryChargingStatus     string
 			BatteryCapacity           int `json:",string"`
 			BatteryRemainingAmount    int `json:",string"`
-			BatteryRemainingAmountWH  string
+			BatteryRemainingAmountWH  int `json:",string"`
 			BatteryRemainingAmountKWH string
 			SOC                       struct {
 				Value int `json:",string"`
@@ -690,6 +693,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
 		Capacity:           batrec.BatteryStatus.BatteryCapacity,
 		Remaining:          batrec.BatteryStatus.BatteryRemainingAmount,
+		RemainingWH:        batrec.BatteryStatus.BatteryRemainingAmountWH,
 		StateOfCharge:      soc,
 		CruisingRangeACOn:  int(acOn),
 		CruisingRangeACOff: int(acOff),
