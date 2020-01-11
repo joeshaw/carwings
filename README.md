@@ -1,9 +1,11 @@
 # Carwings
 
-[![GoDoc](https://godoc.org/github.com/joeshaw/carwings?status.svg)](http://godoc.org/github.com/joeshaw/carwings)
+[![GoDoc](https://godoc.org/github.com/lazzurs/carwings?status.svg)](http://godoc.org/github.com/joeshaw/carwings)
 
 `carwings` is a Go package and command-line tool providing access to
 the Nissan Leaf Carwings API.
+
+Forced from [github.com/joeshaw/carwings/cmd/carwings](github.com/joeshaw/carwings/cmd/carwings)
 
 Through the Carwings API you can ask your vehicle for the latest data,
 see current battery and charging statuses, see the current climate
@@ -14,7 +16,7 @@ start charging, and retrieve the last known location of the vehicle.
 
 The `carwings` tool can be installed with:
 
-    go get github.com/joeshaw/carwings/cmd/carwings
+    go get github.com/lazzurs/carwings/cmd/carwings
 
 Run `carwings` by itself to see full usage information.
 
@@ -31,7 +33,7 @@ This will print something like:
     Logging into Carwings...
     Getting latest retrieved battery status...
     Battery status as of 2017-08-06 15:43:00 -0400 EDT:
-      Capacity: 240 / 240 (92%)
+      Capacity: 12 / 12 (100%)
       Crusing range: 114 miles (107 mi with AC)
       Plug-in state: not connected
       Charging status: not charging
@@ -50,9 +52,13 @@ Config values can be provided through environment variables (such as
 username <username>
 password <password>
 region NA
+units km
 ```
 
 ## Carwings protocol
+
+There is a new protocol and other tools are dealing with that. I have forked this proect to keep in in line with the 
+old protocol, even as Nissan appear to remove features.
 
 Josh Perry's [protocol reference](https://github.com/joshperry/carwings/blob/master/protocol.markdown)
 was incredibly helpful for the development of this library.
@@ -76,9 +82,6 @@ Tobias Westergaard Kjeldsen has created a [Dart library for
 carwings](https://gitlab.com/tobiaswkjeldsen/dartcarwings) as well as
 [an Android app](https://gitlab.com/tobiaswkjeldsen/carwingsflutter).
 
-A new North America-only API is being tracked in [issue
-#3](https://github.com/joeshaw/carwings/issues/3), and more
-information is available there.
 
 ## Contributing
 
@@ -88,6 +91,7 @@ sure the code has been run through `gofmt`.
 ## License
 
 Copyright 2017-2019 Joe Shaw
+Copyright 2020 Rob Lazzurs
 
 `carwings` is licensed under the MIT License.  See the LICENSE file
 for details.

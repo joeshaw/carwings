@@ -158,11 +158,8 @@ type BatteryStatus struct {
 	// Remaining battery level.  Units unknown, but same as Capacity.
 	Remaining int
 
-	// Remaining battery level in Watt Hours.
-	RemainingWH int
-
 	// Current state of charge.  In percent, should be roughly
-	// equivalent to Remaining / Capacity * 100.
+	// equivalent to Remaining * 100 / Capacity.
 	StateOfCharge int // percent
 
 	// Estimated cruising range with climate control on, in
@@ -198,18 +195,6 @@ type TimeToFull struct {
 	// Time to fully charge the battery using a 6.6 kW Level 2
 	// (240V ~30A) charge.
 	Level2At6kW time.Duration
-}
-
-// VehicleLocation indicates the vehicle's current location.
-type VehicleLocation struct {
-	// Timestamp of the last time vehicle location was updated.
-	Timestamp time.Time
-
-	// Latitude of the vehicle
-	Latitude string
-
-	// Longitude of the vehicle
-	Longitude string
 }
 
 // PluginState indicates whether and how the vehicle is plugged in.
@@ -637,12 +622,10 @@ func (s *Session) CheckUpdate(resultKey string) (bool, error) {
 func (s *Session) BatteryStatus() (BatteryStatus, error) {
 	type batteryStatusRecord struct {
 		BatteryStatus struct {
-			BatteryChargingStatus     string
-			BatteryCapacity           int `json:",string"`
-			BatteryRemainingAmount    int `json:",string"`
-			BatteryRemainingAmountWH  int `json:",string"`
-			BatteryRemainingAmountKWH string
-			SOC                       struct {
+			BatteryChargingStatus  string
+			BatteryCapacity        int `json:",string"`
+			BatteryRemainingAmount int `json:",string"`
+			SOC                    struct {
 				Value int `json:",string"`
 			}
 		}
@@ -686,14 +669,13 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 
 	soc := batrec.BatteryStatus.SOC.Value
 	if soc == 0 {
-		soc = int(math.Round(float64(batrec.BatteryStatus.BatteryRemainingAmount) / float64(batrec.BatteryStatus.BatteryCapacity)))
+		soc = int(math.Round(float64(batrec.BatteryStatus.BatteryRemainingAmount) * float64(100) / float64(batrec.BatteryStatus.BatteryCapacity)))
 	}
 
 	bs := BatteryStatus{
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
 		Capacity:           batrec.BatteryStatus.BatteryCapacity,
 		Remaining:          batrec.BatteryStatus.BatteryRemainingAmount,
-		RemainingWH:        batrec.BatteryStatus.BatteryRemainingAmountWH,
 		StateOfCharge:      soc,
 		CruisingRangeACOn:  int(acOn),
 		CruisingRangeACOff: int(acOff),
@@ -869,106 +851,6 @@ func (s *Session) ChargingRequest() error {
 	}
 
 	return nil
-}
-
-// CabinTempRequest sends a request to get the cabin temperature. This is an
-// asynchronous operation: it returns a "result key" that can be used
-// to poll for status with the CheckCabinTempRequest method.
-func (s *Session) CabinTempRequest() (string, error) {
-	var resp struct {
-		baseResponse
-		ResultKey string `json:"resultKey"`
-	}
-
-	if err := s.apiRequest("GetInteriorTemperatureRequestForNsp.php", nil, &resp); err != nil {
-		return "", err
-	}
-	return resp.ResultKey, nil
-}
-
-// CheckCabinTempRequest returns whether the CabinTempRequest has finished.
-func (s *Session) CheckCabinTempRequest(resultKey string) (bool, error) {
-	var resp struct {
-		baseResponse
-		ResponseFlag int `json:"responseFlag,string"` // 0 or 1
-		Temperature  int `json:"Inc_temp"`
-	}
-
-	params := url.Values{}
-	params.Set("resultKey", resultKey)
-
-	if err := s.apiRequest("GetInteriorTemperatureResultForNsp.php", params, &resp); err != nil {
-		return false, err
-	}
-	s.cabinTemp = resp.Temperature
-
-	return resp.ResponseFlag == 1, nil
-}
-
-// GetCabinTemp returns the latest cached cabin temperature result.
-func (s *Session) GetCabinTemp() int {
-	return s.cabinTemp
-}
-
-// LocateRequest sends a request to locate the vehicle.  This is an
-// asynchronous operation: it returns a "result key" that can be used
-// to poll for status with the CheckLocateRequest method.
-func (s *Session) LocateRequest() (string, error) {
-	var resp struct {
-		baseResponse
-		ResultKey string `json:"resultKey"`
-	}
-
-	if err := s.apiRequest("MyCarFinderRequest.php", nil, &resp); err != nil {
-		return "", err
-	}
-
-	return resp.ResultKey, nil
-}
-
-// CheckLocateRequest returns whether the LocateRequest has finished.
-func (s *Session) CheckLocateRequest(resultKey string) (bool, error) {
-	var resp struct {
-		baseResponse
-		ResponseFlag int `json:"responseFlag,string"` // 0 or 1
-	}
-
-	params := url.Values{}
-	params.Set("resultKey", resultKey)
-
-	if err := s.apiRequest("MyCarFinderResultRequest.php", params, &resp); err != nil {
-		return false, err
-	}
-
-	return resp.ResponseFlag == 1, nil
-}
-
-// LocateVehicle requests the last-known location of the vehicle from
-// the Carwings service.  This data is not real-time.  A timestamp of
-// the most recent update is available in the returned VehicleLocation
-// value.
-func (s *Session) LocateVehicle() (VehicleLocation, error) {
-	var resp struct {
-		baseResponse
-		ReceivedDate cwTime `json:"receivedDate"`
-		TargetDate   cwTime
-		Lat          string
-		Lng          string
-	}
-
-	if err := s.apiRequest("MyCarFinderLatLng.php", nil, &resp); err != nil {
-		return VehicleLocation{}, err
-	}
-
-	if time.Time(resp.ReceivedDate).IsZero() {
-		return VehicleLocation{}, errors.New("no location data available")
-	}
-
-	return VehicleLocation{
-		Timestamp: time.Time(resp.ReceivedDate).In(s.loc),
-		Latitude:  resp.Lat,
-		Longitude: resp.Lng,
-	}, nil
 }
 
 // TripDetail holds the details of each trip.  All of the parsed detail is

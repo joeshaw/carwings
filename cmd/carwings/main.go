@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/joeshaw/carwings"
+	"github.com/lazzurs/carwings"
 	"github.com/peterbourgon/ff"
 )
 
@@ -51,8 +51,6 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate           Get most recently loaded climate control status\n")
 		fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
-		fmt.Fprintf(os.Stderr, "  cabin-temp        Get cabin temperature\n")
-		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
@@ -129,12 +127,6 @@ func main() {
 
 	case "climate-on":
 		run = runClimateOn
-
-	case "cabin-temp":
-		run = runCabinTemp
-
-	case "locate":
-		run = runLocate
 
 	case "server":
 		run = runServer
@@ -320,7 +312,7 @@ func runBattery(s *carwings.Session, cfg config, args []string) error {
 	}
 
 	fmt.Printf("Battery status as of %s:\n", bs.Timestamp)
-	fmt.Printf("  Capacity: %d / %d (%d%%) %.1fkWh\n", bs.Remaining, bs.Capacity, bs.StateOfCharge, float64(bs.RemainingWH)/1000)
+	fmt.Printf("  Capacity: %d / %d (%d%%)\n", bs.Remaining, bs.Capacity, bs.StateOfCharge)
 	fmt.Printf("  Cruising range: %s (%s with AC)\n", prettyUnits(cfg.units, bs.CruisingRangeACOff), prettyUnits(cfg.units, bs.CruisingRangeACOn))
 	fmt.Printf("  Plug-in state: %s\n", bs.PluginState)
 	fmt.Printf("  Charging status: %s\n", bs.ChargingStatus)
@@ -416,55 +408,6 @@ func runClimateOn(s *carwings.Session, cfg config, args []string) error {
 		fmt.Println("Climate control turned on")
 	}
 	return err
-}
-
-func runCabinTemp(s *carwings.Session, cfg config, args []string) error {
-	fmt.Println("Getting latest cabin temperature...")
-
-	key, err := s.CabinTempRequest()
-	if err != nil {
-		return err
-	}
-
-	fmt.Print("Waiting for cabin temperature request to complete... ")
-	err = waitForResult(key, cfg.timeout, s.CheckCabinTempRequest)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Cabin temperature: %d°\n", s.GetCabinTemp())
-
-	return nil
-}
-
-func runLocate(s *carwings.Session, cfg config, args []string) error {
-	fmt.Println("Sending locate request...")
-
-	key, err := s.LocateRequest()
-	if err != nil {
-		return err
-	}
-
-	fmt.Print("Waiting for location update to complete... ")
-	err = waitForResult(key, cfg.timeout, s.CheckLocateRequest)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Getting latest vehicle position...")
-
-	vl, err := s.LocateVehicle()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Vehicle location as of %s:\n", vl.Timestamp)
-	fmt.Printf("  Latitude: %s\n", vl.Latitude)
-	fmt.Printf("  Longitude: %s\n", vl.Longitude)
-	fmt.Printf("  Link: https://www.google.com/maps/place/%s,%s\n", vl.Latitude, vl.Longitude)
-	fmt.Println()
-
-	return nil
 }
 
 func runMonthly(s *carwings.Session, cfg config, args []string) error {
