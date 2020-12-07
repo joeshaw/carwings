@@ -52,7 +52,6 @@ func usage(fs *flag.FlagSet) func() {
 		fmt.Fprintf(os.Stderr, "  climate-off       Turn off climate control\n")
 		fmt.Fprintf(os.Stderr, "  climate-on        Turn on climate control\n")
 		fmt.Fprintf(os.Stderr, "  cabin-temp        Get cabin temperature\n")
-		fmt.Fprintf(os.Stderr, "  locate            Locate vehicle\n")
 		fmt.Fprintf(os.Stderr, "  daily             Daily driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  monthly <y> <m>   Monthly driving statistics\n")
 		fmt.Fprintf(os.Stderr, "  server            Listen for requests on port 8040\n")
@@ -132,9 +131,6 @@ func main() {
 
 	case "cabin-temp":
 		run = runCabinTemp
-
-	case "locate":
-		run = runLocate
 
 	case "server":
 		run = runServer
@@ -439,36 +435,6 @@ func runCabinTemp(s *carwings.Session, cfg config, args []string) error {
 	}
 
 	fmt.Printf("Cabin temperature: %d°\n", s.GetCabinTemp())
-
-	return nil
-}
-
-func runLocate(s *carwings.Session, cfg config, args []string) error {
-	fmt.Println("Sending locate request...")
-
-	key, err := s.LocateRequest()
-	if err != nil {
-		return err
-	}
-
-	fmt.Print("Waiting for location update to complete... ")
-	err = waitForResult(key, cfg.timeout, s.CheckLocateRequest)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Getting latest vehicle position...")
-
-	vl, err := s.LocateVehicle()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Vehicle location as of %s:\n", vl.Timestamp)
-	fmt.Printf("  Latitude: %s\n", vl.Latitude)
-	fmt.Printf("  Longitude: %s\n", vl.Longitude)
-	fmt.Printf("  Link: https://www.google.com/maps/place/%s,%s\n", vl.Latitude, vl.Longitude)
-	fmt.Println()
 
 	return nil
 }

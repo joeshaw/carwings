@@ -915,67 +915,6 @@ func (s *Session) GetCabinTemp() int {
 	return s.cabinTemp
 }
 
-// LocateRequest sends a request to locate the vehicle.  This is an
-// asynchronous operation: it returns a "result key" that can be used
-// to poll for status with the CheckLocateRequest method.
-func (s *Session) LocateRequest() (string, error) {
-	var resp struct {
-		baseResponse
-		ResultKey string `json:"resultKey"`
-	}
-
-	if err := s.apiRequest("MyCarFinderRequest.php", nil, &resp); err != nil {
-		return "", err
-	}
-
-	return resp.ResultKey, nil
-}
-
-// CheckLocateRequest returns whether the LocateRequest has finished.
-func (s *Session) CheckLocateRequest(resultKey string) (bool, error) {
-	var resp struct {
-		baseResponse
-		ResponseFlag int `json:"responseFlag,string"` // 0 or 1
-	}
-
-	params := url.Values{}
-	params.Set("resultKey", resultKey)
-
-	if err := s.apiRequest("MyCarFinderResultRequest.php", params, &resp); err != nil {
-		return false, err
-	}
-
-	return resp.ResponseFlag == 1, nil
-}
-
-// LocateVehicle requests the last-known location of the vehicle from
-// the Carwings service.  This data is not real-time.  A timestamp of
-// the most recent update is available in the returned VehicleLocation
-// value.
-func (s *Session) LocateVehicle() (VehicleLocation, error) {
-	var resp struct {
-		baseResponse
-		ReceivedDate cwTime `json:"receivedDate"`
-		TargetDate   cwTime
-		Lat          string
-		Lng          string
-	}
-
-	if err := s.apiRequest("MyCarFinderLatLng.php", nil, &resp); err != nil {
-		return VehicleLocation{}, err
-	}
-
-	if time.Time(resp.ReceivedDate).IsZero() {
-		return VehicleLocation{}, errors.New("no location data available")
-	}
-
-	return VehicleLocation{
-		Timestamp: time.Time(resp.ReceivedDate).In(s.loc),
-		Latitude:  resp.Lat,
-		Longitude: resp.Lng,
-	}, nil
-}
-
 // TripDetail holds the details of each trip.  All of the parsed detail is
 // used in both the response and the MonthlyStatistics.
 type TripDetail struct {
