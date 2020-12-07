@@ -467,7 +467,8 @@ func (s *Session) Login() error {
 		VehicleInfo vehicleInfo `json:"VehicleInfo"`
 
 		CustomerInfo struct {
-			Timezone string
+			Timezone    string
+			VehicleInfo vehicleInfo `json:"VehicleInfo"`
 		}
 	}
 	if err := apiRequest("UserLoginRequest.php", params, &loginResp); err != nil {
@@ -481,6 +482,9 @@ func (s *Session) Login() error {
 
 	case len(loginResp.VehicleInfoList.VehicleInfos) > 0:
 		vi = loginResp.VehicleInfoList.VehicleInfos[0]
+
+	case len(loginResp.CustomerInfo.VehicleInfo.VIN) > 0:
+		vi = loginResp.CustomerInfo.VehicleInfo
 
 	default:
 		vi = loginResp.VehicleInfo
