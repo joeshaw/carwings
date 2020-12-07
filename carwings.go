@@ -639,7 +639,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 		BatteryStatus struct {
 			BatteryChargingStatus     string
 			BatteryCapacity           int `json:",string"`
-			BatteryRemainingAmount    int `json:",string"`
+			BatteryRemainingAmount    string
 			BatteryRemainingAmountWH  int `json:",string"`
 			BatteryRemainingAmountKWH string
 			SOC                       struct {
@@ -681,18 +681,19 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 		return BatteryStatus{}, err
 	}
 
+	remaining, _ := strconv.Atoi(batrec.BatteryStatus.BatteryRemainingAmount)
 	acOn, _ := batrec.CruisingRangeAcOn.Float64()
 	acOff, _ := batrec.CruisingRangeAcOff.Float64()
 
 	soc := batrec.BatteryStatus.SOC.Value
 	if soc == 0 {
-		soc = int(math.Round(float64(batrec.BatteryStatus.BatteryRemainingAmount) / float64(batrec.BatteryStatus.BatteryCapacity)))
+		soc = int(math.Round(float64(remaining) / float64(batrec.BatteryStatus.BatteryCapacity)))
 	}
 
 	bs := BatteryStatus{
 		Timestamp:          time.Time(batrec.NotificationDateAndTime).In(s.loc),
 		Capacity:           batrec.BatteryStatus.BatteryCapacity,
-		Remaining:          batrec.BatteryStatus.BatteryRemainingAmount,
+		Remaining:          remaining,
 		RemainingWH:        batrec.BatteryStatus.BatteryRemainingAmountWH,
 		StateOfCharge:      soc,
 		CruisingRangeACOn:  int(acOn),
