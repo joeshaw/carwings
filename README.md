@@ -52,6 +52,26 @@ password <password>
 region NA
 ```
 
+## Server mode
+
+When `carwings server` is run, an HTTP server is started with endpoints
+for retrieving battery and climate info, and for starting charging and
+toggling the climate control system.  This can be handy for building
+home automation workflows.  I use this with [IFTTT](https://ifttt.com)
+so that I can use the Google Assistant to start warming up my car.
+
+The endpoints are:
+
+```
+GET /battery
+GET /climate
+POST /charging/on
+POST /climate/on
+POST /climate/off
+```
+
+The `POST` endpoints take no request body.
+
 ## Carwings protocol
 
 Josh Perry's [protocol reference](https://github.com/joshperry/carwings/blob/master/protocol.markdown)
@@ -87,7 +107,7 @@ sure the code has been run through `gofmt`.
 
 ## License
 
-Copyright 2017-2019 Joe Shaw
+Copyright 2017-2020 Joe Shaw
 
 `carwings` is licensed under the MIT License.  See the LICENSE file
 for details.
