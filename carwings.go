@@ -45,7 +45,7 @@ var (
 	// Default URL for connecting to Carwings service.  This is
 	// changed by Nissan from time to time, so it's helpful to
 	// have it be configurable.
-	BaseURL = "https://gdcportalgw.its-mo.com/api_v190426_NE/gdc/"
+	BaseURL = "https://gdcportalgw.its-mo.com/api_v200413_NE/gdc/"
 )
 
 func pkcs5Padding(data []byte, blocksize int) []byte {
