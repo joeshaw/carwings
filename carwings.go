@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	//lint:ignore SA1019 Blowfish is terrible, but that's what the Nissan API uses
@@ -370,11 +371,23 @@ func (r *baseResponse) ErrorMessage() string {
 }
 
 func apiRequest(endpoint string, params url.Values, target response) error {
+	req, err := http.NewRequest("POST", BaseURL+endpoint, strings.NewReader(params.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "")
+
 	if Debug {
-		fmt.Fprintf(os.Stderr, "POST %s %s\n", BaseURL+endpoint, params)
+		body, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprintln(os.Stderr, string(body))
+		fmt.Fprintln(os.Stderr)
 	}
 
-	resp, err := http.PostForm(BaseURL+endpoint, params)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
