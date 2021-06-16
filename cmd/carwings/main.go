@@ -193,9 +193,7 @@ func configParser(r io.Reader, set func(name, value string) error) error {
 			name, value = line[:index], strings.TrimSpace(line[index:])
 		}
 
-		if strings.HasSuffix(name, ":") {
-			name = name[:len(name)-1]
-		}
+		name = strings.TrimSuffix(name, ":")
 
 		if err := set(name, value); err != nil {
 			return err
