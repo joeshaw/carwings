@@ -47,6 +47,9 @@ var (
 	// changed by Nissan from time to time, so it's helpful to
 	// have it be configurable.
 	BaseURL = "https://gdcportalgw.its-mo.com/api_v200413_NE/gdc/"
+	
+	// Http client used for api requests
+	Client = http.DefaultClient
 )
 
 func pkcs5Padding(data []byte, blocksize int) []byte {
@@ -387,7 +390,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 		fmt.Fprintln(os.Stderr)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := Client.Do(req)
 	if err != nil {
 		return err
 	}
