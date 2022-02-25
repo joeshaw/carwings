@@ -47,7 +47,7 @@ var (
 	// changed by Nissan from time to time, so it's helpful to
 	// have it be configurable.
 	BaseURL = "https://gdcportalgw.its-mo.com/api_v200413_NE/gdc/"
-	
+
 	// Http client used for api requests
 	Client = http.DefaultClient
 )
@@ -595,7 +595,6 @@ func (s *Session) apiRequest(endpoint string, params url.Values, target response
 	}
 
 	return err
-
 }
 
 func (s *Session) setCommonParams(params url.Values) url.Values {
@@ -813,7 +812,6 @@ func (s *Session) ClimateOffRequest() (string, error) {
 	}
 
 	return resp.ResultKey, nil
-
 }
 
 // CheckClimateOffRequest returns whether the ClimateOffRequest has
@@ -852,7 +850,6 @@ func (s *Session) ClimateOnRequest() (string, error) {
 	}
 
 	return resp.ResultKey, nil
-
 }
 
 // CheckClimateOnRequest returns whether the ClimateOnRequest has

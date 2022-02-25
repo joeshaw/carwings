@@ -493,7 +493,7 @@ func runMonthly(s *carwings.Session, cfg config, args []string) error {
 			fmt.Printf("          =======%.*s ======%.*s ==========\n",
 				len(cfg.units), "====",
 				len(cfg.effunits), "=========")
-			efficiency := power / float64(distance)     // in Wh/m or kWh/km
+			efficiency := power / float64(distance) // in Wh/m or kWh/km
 			fmt.Printf("          %6.1f %s %5.1f %s %6.1f kWh\n\n",
 				metersToUnits(cfg.units, distance), cfg.units,
 				efficiencyToUnits("kWh/km", cfg.effunits, efficiency),
