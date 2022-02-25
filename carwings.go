@@ -708,7 +708,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 
 	soc := batrec.BatteryStatus.SOC.Value
 	if soc == 0 {
-		soc = int(math.Round(float64(remaining) / float64(batrec.BatteryStatus.BatteryCapacity)))
+		soc = int(math.Round(float64(remaining) / float64(batrec.BatteryStatus.BatteryCapacity) * 100))
 	}
 
 	bs := BatteryStatus{
