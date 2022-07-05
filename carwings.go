@@ -32,7 +32,7 @@ var (
 	// service when fetching updated vehicle data.
 	ErrUpdateFailed = errors.New("failed to retrieve updated info from vehicle")
 
-	// ErrBatteryStatusUnavailable is returned from the
+	// ErrClimateStatusUnavailable is returned from the
 	// ClimateStatus method when no data is available.
 	ErrClimateStatusUnavailable = errors.New("climate status unavailable")
 
