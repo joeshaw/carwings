@@ -33,6 +33,10 @@ var (
 	ErrUpdateFailed = errors.New("failed to retrieve updated info from vehicle")
 
 	// ErrBatteryStatusUnavailable is returned from the
+	// ClimateStatus method when no data is available.
+	ErrClimateStatusUnavailable = errors.New("climate status unavailable")
+
+	// ErrBatteryStatusUnavailable is returned from the
 	// BatteryStatus method when no data is available.
 	ErrBatteryStatusUnavailable = errors.New("battery status unavailable")
 
@@ -760,7 +764,7 @@ func (s *Session) ClimateControlStatus() (ClimateStatus, error) {
 	// Sometimes the RemoteACRecords field is an empty array
 	// instead of a struct value.  This API... ¯\_(ツ)_/¯
 	if string(resp.RemoteACRecords) == "[]" {
-		return ClimateStatus{}, errors.New("climate status not available")
+		return ClimateStatus{}, ErrClimateStatusUnavailable
 	}
 
 	var racr remoteACRecords
