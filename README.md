@@ -45,13 +45,13 @@ distinct username.
 
 The regions are:
 
-| Region    | Carwings Region Code |
-| --------- | -------------------- |
-| USA       | NNA                  |
-| Europe    | NE                   |
-| Canada    | NCI                  |
-| Australia | NMA                  |
-| Japan     | NML                  |
+| Nissan Region | Carwings Region Code |
+| ------------- | -------------------- |
+| USA           | NNA                  |
+| Europe        | NE                   |
+| Canada        | NCI                  |
+| Australia     | NMA                  |
+| Japan         | NML                  |
 
 Config values can be provided through environment variables (such as
 `CARWINGS_USERNAME`) or in a `~/.carwings` file in the format:
