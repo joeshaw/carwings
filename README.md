@@ -14,7 +14,7 @@ start charging.
 
 The `carwings` tool can be installed with:
 
-    go get github.com/joeshaw/carwings/cmd/carwings
+    go install github.com/joeshaw/carwings/cmd/carwings@latest
 
 Run `carwings` by itself to see full usage information.
 
