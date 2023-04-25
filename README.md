@@ -20,11 +20,11 @@ Run `carwings` by itself to see full usage information.
 
 To update vehicle information:
 
-    carwings -username <username> -password <password> update
+    carwings -username <username> -password <password> -region <region code> update
 
 To get latest battery status:
 
-    carwings -username <username> -password <password> battery
+    carwings -username <username> -password <password> -region <region code> battery
 
 This will print something like:
 
@@ -42,6 +42,16 @@ This will print something like:
 
 For some people the username is an email address.  For others it's a
 distinct username.
+
+The regions are:
+
+| Nissan Region | Carwings Region Code |
+| ------------- | -------------------- |
+| USA           | NNA                  |
+| Europe        | NE                   |
+| Canada        | NCI                  |
+| Australia     | NMA                  |
+| Japan         | NML                  |
 
 Config values can be provided through environment variables (such as
 `CARWINGS_USERNAME`) or in a `~/.carwings` file in the format:
