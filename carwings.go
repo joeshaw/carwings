@@ -383,7 +383,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "")
+	req.Header.Set("User-Agent", "CW")
 
 	if Debug {
 		body, err := httputil.DumpRequestOut(req, true)
