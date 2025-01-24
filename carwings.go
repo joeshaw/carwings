@@ -382,8 +382,10 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "CW")
+
+	// A user agent is required. Using an unobtrusive value to not attract attention.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+    req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if Debug {
 		body, err := httputil.DumpRequestOut(req, true)
