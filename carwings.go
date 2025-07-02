@@ -2,6 +2,8 @@ package carwings
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,13 +16,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	//lint:ignore SA1019 Blowfish is terrible, but that's what the Nissan API uses
-	"golang.org/x/crypto/blowfish"
 )
 
 const (
 	initialAppStrings = "9s5rfKVuMrT03RtzajWNcA"
+	initialAESVector  = "xaX4ui2PLnwqcc74"
+	initialAESKey     = "H9YsaE6mr3jBEsAaLC4EJRjn9VXEtTzV"
 )
 
 var (
@@ -50,35 +51,32 @@ var (
 	// Default URL for connecting to Carwings service.  This is
 	// changed by Nissan from time to time, so it's helpful to
 	// have it be configurable.
-	BaseURL = "https://gdcportalgw.its-mo.com/api_v230317_NE/gdc/"
+	BaseURL = "https://gdcportalgw.its-mo.com/api_v250205_NE/gdc/"
 
 	// Http client used for api requests
 	Client = http.DefaultClient
 )
 
-func pkcs5Padding(data []byte, blocksize int) []byte {
+func pkcs7Padding(data []byte, blocksize int) []byte {
 	padLen := blocksize - (len(data) % blocksize)
 	padding := bytes.Repeat([]byte{byte(padLen)}, padLen)
 	return append(data, padding...)
 }
 
-// Pads the source, does ECB Blowfish encryption on it, and returns a
+// Pads the source, does AES CBC encryption on it, and returns a
 // base64-encoded string.
-func encrypt(s, key string) (string, error) {
-	cipher, err := blowfish.NewCipher([]byte(key))
+func encrypt(s string) (string, error) {
+	block, err := aes.NewCipher([]byte(initialAESKey))
 	if err != nil {
 		return "", err
 	}
+	mode := cipher.NewCBCEncrypter(block, []byte(initialAESVector))
 
 	src := []byte(s)
-	src = pkcs5Padding(src, cipher.BlockSize())
+	src = pkcs7Padding(src, aes.BlockSize)
 
 	dst := make([]byte, len(src))
-	pos := 0
-	for pos < len(src) {
-		cipher.Encrypt(dst[pos:], src[pos:])
-		pos += cipher.BlockSize()
-	}
+	mode.CryptBlocks(dst, src)
 
 	return base64.StdEncoding.EncodeToString(dst), nil
 }
@@ -434,18 +432,7 @@ func apiRequest(endpoint string, params url.Values, target response) error {
 // Connect establishes a new authenticated Session with the Carwings
 // service.
 func (s *Session) Connect(username, password string) error {
-	params := url.Values{}
-	params.Set("initial_app_str", initialAppStrings)
-
-	var initResp struct {
-		baseResponse
-		Baseprm string `json:"baseprm"`
-	}
-	if err := apiRequest("InitialApp_v2.php", params, &initResp); err != nil {
-		return err
-	}
-
-	encpw, err := encrypt(password, initResp.Baseprm)
+	encpw, err := encrypt(password)
 	if err != nil {
 		return err
 	}
@@ -466,8 +453,8 @@ func (s *Session) Connect(username, password string) error {
 
 func (s *Session) Login() error {
 	params := url.Values{}
-	params.Set("initial_app_str", initialAppStrings)
 
+	params.Set("initial_app_str", initialAppStrings)
 	params.Set("UserId", s.username)
 	params.Set("Password", s.encpw)
 	params.Set("RegionCode", s.Region)
@@ -666,7 +653,7 @@ func (s *Session) BatteryStatus() (BatteryStatus, error) {
 			BatteryCapacity           int `json:",string"`
 			BatteryRemainingAmount    string
 			BatteryRemainingAmountWH  string
-			BatteryRemainingAmountKWH string
+			BatteryRemainingAmountKWH []string
 			SOC                       struct {
 				Value int `json:",string"`
 			}
