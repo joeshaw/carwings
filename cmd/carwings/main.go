@@ -64,13 +64,21 @@ func main() {
 		cfg                 config
 		username, password  string
 		region, sessionFile string
+		homeFolder          string
 	)
+
+	homeFolder, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: could not get user homedir\n")
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "User homedir found: "+homeFolder+"\n")
 
 	fs := flag.NewFlagSet("carwings", flag.ExitOnError)
 	fs.StringVar(&username, "username", "", "carwings username")
 	fs.StringVar(&password, "password", "", "carwings password")
 	fs.StringVar(&region, "region", carwings.RegionUSA, "carwings region. Defaults to US (NNA).")
-	fs.StringVar(&sessionFile, "session-file", "~/.carwings-session", "carwings session file")
+	fs.StringVar(&sessionFile, "session-file", homeFolder+"/.carwings-session", "carwings session file")
 	fs.StringVar(&cfg.units, "units", unitsMiles, "units to use (miles or km). Defaults to miles.")
 	fs.StringVar(&cfg.effunits, "effunits", unitskWhPerMile, "efficiency units to use (kWh/mile, kWh/km or kWh/100km). Defaults to kWh/mile.")
 	fs.StringVar(&carwings.BaseURL, "url", carwings.BaseURL, "base carwings api endpoint to use")
